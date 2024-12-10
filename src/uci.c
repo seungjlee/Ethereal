@@ -98,7 +98,7 @@ int main(int argc, char **argv) {
     while (getInput(str)) {
 
         if (strStartsWith(str, "gp")) {
-            uciPosition(str, &board, chess960);
+            boardFromFEN(&board, strstr(str, "fen") + strlen("fen "), chess960);
             strstr(str, "fen")[-1] = 0;
             uciGo(&uciGoStruct, &pthreadsgo, threads, &board, multiPV, str);
         }
