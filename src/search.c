@@ -289,6 +289,8 @@ void* iterativeDeepening(void *vthread) {
 
 void aspirationWindow(Thread *thread) {
 
+    TimeManager *const tm = thread->tm;
+    Limits *const limits  = thread->limits;
     PVariation pv;
     int depth  = thread->depth;
     int alpha  = -MATE, beta = MATE, delta = WindowSize;
@@ -329,6 +331,11 @@ void aspirationWindow(Thread *thread) {
             depth = depth - (abs(pv.score) <= MATE / 2);
             update_best_line(thread, &pv);
         }
+        
+        if (   (limits->limitedBySelf  && tm_finished(thread, tm))
+            || (limits->limitedByDepth && thread->depth >= limits->depthLimit)
+            || (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
+            break;
 
         // Expand the search window
         delta = delta + delta / 2;
@@ -336,6 +343,9 @@ void aspirationWindow(Thread *thread) {
 }
 
 int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth, bool cutnode) {
+
+    TimeManager *const tm = thread->tm;
+    Limits *const limits  = thread->limits;
 
     Board *const board   = &thread->board;
     NodeState *const ns  = &thread->states[thread->height];
@@ -582,6 +592,11 @@ int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth, bool 
                 // Probcut failed high verifying the cutoff
                 if (value >= rBeta) return value;
             }
+
+            if (   (limits->limitedBySelf  && tm_finished(thread, tm))
+                || (limits->limitedByDepth && thread->depth >= limits->depthLimit)
+                || (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
+                break;
         }
     }
 
@@ -796,6 +811,11 @@ int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth, bool 
                 if (alpha >= beta) break;
             }
         }
+
+        if (   (limits->limitedBySelf  && tm_finished(thread, tm))
+            || (limits->limitedByDepth && thread->depth >= limits->depthLimit)
+            || (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
+            break;
     }
 
     // Step 20 (~760 elo). Update History counters on a fail high for a quiet move.
@@ -831,6 +851,9 @@ int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth, bool 
 }
 
 int qsearch(Thread *thread, PVariation *pv, int alpha, int beta) {
+
+    TimeManager *const tm = thread->tm;
+    Limits *const limits  = thread->limits;
 
     Board *const board  = &thread->board;
     NodeState *const ns = &thread->states[thread->height];
@@ -939,6 +962,11 @@ int qsearch(Thread *thread, PVariation *pv, int alpha, int beta) {
             if (alpha >= beta)
                 break;
         }
+
+        if (   (limits->limitedBySelf  && tm_finished(thread, tm))
+            || (limits->limitedByDepth && thread->depth >= limits->depthLimit)
+            || (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
+            break;
     }
 
     // Step 8. Store results of search into the Transposition Table.
