@@ -55,21 +55,22 @@ void tt_prefetch(uint64_t hash) { __builtin_prefetch(&Table.buckets[hash & Table
 
 
 int tt_init(int nthreads, int megabytes) {
-    (void)(megabytes);
-    // const uint64_t MB = 1ull << 20;
-    uint64_t keySize = 12ull;
-
     // Cleanup memory when resizing the table
-    if (Table.hashMask) free(Table.buckets);
+    if (Table.hashMask)
+        free(Table.buckets);
+
+#ifdef ENABLE_MULTITHREAD
+    const uint64_t MB = 1ull << 20;
+    uint64_t keySize = 16ull;
 
     // Default keysize of 16 bits maps to a 2MB TTable
-    // assert((1ull << 16ull) * sizeof(TTBucket) == 2 * MB);
+    assert((1ull << 16ull) * sizeof(TTBucket) == 2 * MB);
 
     // Find the largest keysize that is still within our given megabytes
-    // while ((1ull << keySize) * sizeof(TTBucket) <= megabytes * MB / 2) keySize++;
-    // assert((1ull << keySize) * sizeof(TTBucket) <= megabytes * MB);
+    while ((1ull << keySize) * sizeof(TTBucket) <= megabytes * MB / 2) keySize++;
+    assert((1ull << keySize) * sizeof(TTBucket) <= megabytes * MB);
 
-#if 0 //defined(__linux__) && !defined(__ANDROID__)
+#if defined(__linux__) && !defined(__ANDROID__)
 
     // On Linux systems we align on 2MB boundaries and request Huge Pages
     Table.buckets = aligned_alloc(2 * MB, (1ull << keySize) * sizeof(TTBucket));
@@ -87,7 +88,19 @@ int tt_init(int nthreads, int megabytes) {
     tt_clear(nthreads);
 
     int bytes = ((Table.hashMask + 1) * sizeof(TTBucket));
+    return bytes / MB;
+#else
+    (void)(nthreads), (void)(megabytes);
+
+    uint64_t size = 512;
+    int bytes = (int)(size * sizeof(TTBucket));
+
+    Table.hashMask = size - 1;
+    Table.buckets = malloc(bytes);
+    memset(Table.buckets, 0, bytes);
+
     return bytes;
+#endif
 }
 
 int tt_hashfull() {

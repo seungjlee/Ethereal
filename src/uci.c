@@ -72,9 +72,10 @@ int main(int argc, char **argv) {
     // Initialize core components of Ethereal
     initAttacks(); initMasks(); initEval();
     initSearch(); initZobrist();
-    int bytes_allocated = tt_init(1, 1);
-    printf("Allocated size %d\n", bytes_allocated);
-    //initPKNetwork(); nnue_incbin_init();
+    tt_init(1, 1);
+
+    initPKNetwork();
+    //nnue_incbin_init();
 
     // Create the UCI-board and our threads
     threads = createThreadPool(1);
