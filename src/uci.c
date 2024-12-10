@@ -221,12 +221,15 @@ void uciGo(UCIGoStruct *ucigo, pthread_t *pthread, Thread *threads, Board *board
     ucigo->board   = board;
     ucigo->threads = threads;
 
+#ifdef REPORT_DIAGNOSTICS
     printf("Number of threads: %d\n", ucigo->threads->nthreads);
+#endif
     // Spawn a new thread to handle the search
-#if 1
+#if 0
     pthread_create(pthread, NULL, &start_search_threads, ucigo);
     pthread_detach(*pthread);
 #else
+    (void)(pthread);
     start_search_threads(ucigo);
 #endif
 }
@@ -354,7 +357,7 @@ void uciPosition(char *str, Board *board, int chess960) {
 
 
 void uciReport(Thread *threads, PVariation *pv, int alpha, int beta) {
-
+#ifdef REPORT_DIAGNOSTICS
     // Gather all of the statistics that the UCI protocol would be
     // interested in. Also, bound the value passed by alpha and
     // beta, since Ethereal uses a mix of fail-hard and fail-soft
@@ -394,15 +397,26 @@ void uciReport(Thread *threads, PVariation *pv, int alpha, int beta) {
 
     // Send out a newline and flush
     puts(""); fflush(stdout);
+#else
+    (void)(threads);
+    (void)(pv);
+    (void)(alpha);
+    (void)(beta);
+#endif
 }
 
 void uciReportCurrentMove(Board *board, uint16_t move, int currmove, int depth) {
-
+#ifdef REPORT_DIAGNOSTICS
     char moveStr[6];
     moveToString(move, moveStr, board->chess960);
     printf("info depth %d currmove %s currmovenumber %d\n", depth, moveStr, currmove);
     fflush(stdout);
-
+#else
+    (void)(board);
+    (void)(move);
+    (void)(currmove);
+    (void)(depth);
+#endif
 }
 
 

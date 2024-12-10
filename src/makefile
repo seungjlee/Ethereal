@@ -25,7 +25,7 @@
 #CC   = clang
 CC   = gcc
 SRC  = *.c #pyrrhic/tbprobe.c
-LIBS = -lpthread -lm
+LIBS = -lm
 NN   = -DUSE_NNUE=0
 EXE  = Ethereal
 
@@ -54,6 +54,8 @@ SSSE3FLAGS  = -DUSE_SSSE3 -msse -msse2 -msse3 -mssse3
 AVXFLAGS    = -DUSE_AVX -mavx -msse4.1 $(SSSE3FLAGS)
 AVX2FLAGS   = -DUSE_AVX2 -mavx2 -mfma $(AVXFLAGS)
 
+CFLAGS += -DREPORT_DIAGNOSTICS
+
 ### =========================================================================
 ### Section 2. Native Build Configuration [ Auto-Detection ]
 ### =========================================================================
@@ -77,7 +79,7 @@ PROPS = $(shell echo | $(CC) -march=native -E -dM -)
 # Detect AVX2, AVX, or otherwise SSSE3 Instruction Support
 
 ifneq ($(findstring __AVX2__, $(PROPS)),)
-	CFLAGS += -DUSE_AVX2
+	CFLAGS += $(AVX2FLAGS)
 endif
 
 ifneq ($(findstring __AVX__, $(PROPS)),)

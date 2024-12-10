@@ -80,12 +80,12 @@ static void underlying_quiet_history(Thread *thread, uint16_t move, int16_t *his
     const bool threat_to   = testBit(threats, to);
 
     // Set Counter Move History if it exists
-    histories[0] = (ns-1)->continuations == NULL
-                 ? &NULL_HISTORY : &(*(ns-1)->continuations)[0][piece][to];
+    histories[0] = (int16_t*)((ns-1)->continuations == NULL
+                 ? &NULL_HISTORY : &(*(ns-1)->continuations)[0][piece][to]);
 
     // Set Followup Move History if it exists
-    histories[1] = (ns-2)->continuations == NULL
-                 ? &NULL_HISTORY : &(*(ns-2)->continuations)[1][piece][to];
+    histories[1] = (int16_t*)((ns-2)->continuations == NULL
+                 ? &NULL_HISTORY : &(*(ns-2)->continuations)[1][piece][to]);
 
     // Set Butterfly History, which will always exist
     histories[2] = &thread->history[thread->board.turn][threat_from][threat_to][from][to];

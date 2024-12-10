@@ -52,7 +52,7 @@ void tt_update() { Table.generation += TT_MASK_BOUND + 1; }
 void tt_prefetch(uint64_t hash) { __builtin_prefetch(&Table.buckets[hash & Table.hashMask]); }
 
 
-int tt_init(int nthreads, int megabytes) {
+int tt_init(int nthreads, int) {
     // const uint64_t MB = 1ull << 20;
     uint64_t keySize = 10ull;
 
@@ -83,8 +83,8 @@ int tt_init(int nthreads, int megabytes) {
     // Clear the table and load everything into the cache
     tt_clear(nthreads);
 
-    // Return the number of MB actually allocated for the TTable
-    return ((Table.hashMask + 1) * sizeof(TTBucket));
+    int bytes = ((Table.hashMask + 1) * sizeof(TTBucket));
+    return bytes;
 }
 
 int tt_hashfull() {

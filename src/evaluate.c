@@ -438,7 +438,6 @@ const int Tempo = 20;
 #undef S
 
 int evaluateBoard(Thread *thread, Board *board) {
-
     int phase, eval, pkeval, factor = SCALE_NORMAL;
 
     // We can recognize positions we just evaluated

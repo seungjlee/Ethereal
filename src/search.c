@@ -195,7 +195,9 @@ void *start_search_threads(void *arguments) {
 
 void getBestMove(Thread *threads, Board *board, Limits *limits, uint16_t *best, uint16_t *ponder, int *score) {
 
+#ifdef ENABLE_MULTITHREAD
     pthread_t pthreads[threads->nthreads];
+#endif
     TimeManager tm = {0}; tm_init(limits, &tm);
 
     // Minor house keeping for starting a search
@@ -236,8 +238,8 @@ void* iterativeDeepening(void *vthread) {
     const int mainThread  = thread->index == 0;
 
     // Bind when we expect to deal with NUMA
-    if (thread->nthreads > 8)
-        bindThisThread(thread->index);
+    // if (thread->nthreads > 8)
+    //     bindThisThread(thread->index);
 
     // Perform iterative deepening until exit conditions
     for (thread->depth = 1; thread->depth < MAX_PLY; thread->depth++) {
@@ -331,17 +333,18 @@ int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth, bool 
     const int PvNode     = (alpha != beta - 1);
     const int RootNode   = (thread->height == 0);
 
-    unsigned tbresult;
+    //unsigned tbresult;
     int hist = 0, cmhist = 0, fmhist = 0;
     int movesSeen = 0, quietsPlayed = 0, capturesPlayed = 0, played = 0;
-    int ttHit = 0, ttValue = 0, ttEval = VALUE_NONE, ttDepth = 0, tbBound, ttBound = 0;
+    int ttHit = 0, ttValue = 0, ttEval = VALUE_NONE, ttDepth = 0, ttBound = 0;
     int R, newDepth, rAlpha, rBeta, oldAlpha = alpha;
     int inCheck, isQuiet, improving, extension, singular, skipQuiets = 0;
-    int eval, value, best = -MATE, syzygyMax = MATE, syzygyMin = -MATE, seeMargin[2];
+    int eval, best = -MATE, syzygyMax = MATE, syzygyMin = -MATE, seeMargin[2];
     uint16_t move, ttMove = NONE_MOVE, bestMove = NONE_MOVE;
     uint16_t quietsTried[MAX_MOVES], capturesTried[MAX_MOVES];
     bool doFullSearch;
     PVariation lpv;
+    int value = 0;
 
     // Step 1. Quiescence Search. Perform a search using mostly tactical
     // moves to reach a more stable position for use as a static evaluation
