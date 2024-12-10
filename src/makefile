@@ -24,7 +24,7 @@
 
 #CC   = clang
 CC   = gcc
-SRC  = *.c #pyrrhic/tbprobe.c
+SRC  = *.c pyrrhic/tbprobe.c
 LIBS = -lm
 NN   = -DUSE_NNUE=0
 EXE  = Ethereal

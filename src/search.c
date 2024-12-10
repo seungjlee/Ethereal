@@ -33,13 +33,13 @@
 #include "bitboards.h"
 #include "board.h"
 #include "evaluate.h"
-// #include "pyrrhic/tbprobe.h"
+#include "pyrrhic/tbprobe.h"
 #include "history.h"
 #include "move.h"
 #include "movegen.h"
 #include "movepicker.h"
 #include "search.h"
-// #include "syzygy.h"
+#include "syzygy.h"
 #include "thread.h"
 #include "timeman.h"
 #include "transposition.h"
@@ -214,8 +214,8 @@ void getBestMove(Thread *threads, Board *board, Limits *limits, uint16_t *best, 
     newSearchThreadPool(threads, board, limits, &tm);
 
     // Allow Syzygy to refine the move list for optimal results
-    // if (!limits->limitedByMoves && limits->multiPV == 1)
-    //     tablebasesProbeDTZ(board, limits);
+    if (!limits->limitedByMoves && limits->multiPV == 1)
+        tablebasesProbeDTZ(board, limits);
 
 #ifdef ENABLE_MULTITHREAD
     // Create a new thread for each of the helpers and reuse the current
@@ -236,6 +236,10 @@ void getBestMove(Thread *threads, Board *board, Limits *limits, uint16_t *best, 
 
     // Pick the best of our completed threads
     select_from_threads(threads, best, ponder, score);
+
+#ifdef REPORT_DIAGNOSTICS
+    printf("Search time: %.0f msecs.\n", elapsed_time(&tm));
+#endif
 }
 
 void* iterativeDeepening(void *vthread) {
@@ -243,31 +247,38 @@ void* iterativeDeepening(void *vthread) {
     Thread *const thread  = (Thread*) vthread;
     TimeManager *const tm = thread->tm;
     Limits *const limits  = thread->limits;
-    const int mainThread  = thread->index == 0;
 
+#ifdef ENABLE_MULTITHREAD
     // Bind when we expect to deal with NUMA
-    // if (thread->nthreads > 8)
-    //     bindThisThread(thread->index);
+    if (thread->nthreads > 8)
+        bindThisThread(thread->index);
+#endif
 
     // Perform iterative deepening until exit conditions
     for (thread->depth = 1; thread->depth < MAX_PLY; thread->depth++) {
 
+#ifdef ENABLE_MULTITHREAD
         // If we abort to here, we stop searching
         #if defined(_WIN32) || defined(_WIN64)
         if (_setjmp(thread->jbuffer, NULL)) break;
         #else
         if (setjmp(thread->jbuffer)) break;
         #endif
+#endif
 
         // Perform a search for the current depth for each requested line of play
         for (thread->multiPV = 0; thread->multiPV < limits->multiPV; thread->multiPV++)
             aspirationWindow(thread);
 
+#ifdef ENABLE_MULTITHREAD
+        const int mainThread  = thread->index == 0;
         // Helper threads need not worry about time and search info updates
         if (!mainThread) continue;
+#endif
 
         // We delay reporting during MultiPV searches
-        if (limits->multiPV > 1) report_multipv_lines(thread);
+        if (limits->multiPV > 1)
+            report_multipv_lines(thread);
 
         // Update clock based on score and pv changes
         tm_update(thread, limits, tm);
@@ -294,7 +305,9 @@ void aspirationWindow(Thread *thread) {
     PVariation pv;
     int depth  = thread->depth;
     int alpha  = -MATE, beta = MATE, delta = WindowSize;
+#ifdef REPORT_DIAGNOSTICS
     int report = !thread->index && thread->limits->multiPV == 1;
+#endif
 
     // After a few depths use a previous result to form the window
     if (thread->depth >= WindowDepth) {
@@ -306,9 +319,11 @@ void aspirationWindow(Thread *thread) {
 
         // Perform a search and consider reporting results
         pv.score = search(thread, &pv, alpha, beta, MAX(1, depth), FALSE);
+#ifdef REPORT_DIAGNOSTICS
         if (   (report && pv.score > alpha && pv.score < beta)
             || (report && elapsed_time(thread->tm) >= WindowTimerMS))
             uciReport(thread->threads, &pv, alpha, beta);
+#endif
 
         // Search returned a result within our window
         if (pv.score > alpha && pv.score < beta) {
@@ -353,10 +368,10 @@ int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth, bool 
     const int PvNode     = (alpha != beta - 1);
     const int RootNode   = (thread->height == 0);
 
-    //unsigned tbresult;
+    unsigned tbresult;
     int hist = 0, cmhist = 0, fmhist = 0;
     int movesSeen = 0, quietsPlayed = 0, capturesPlayed = 0, played = 0;
-    int ttHit = 0, ttValue = 0, ttEval = VALUE_NONE, ttDepth = 0, ttBound = 0;
+    int ttHit = 0, ttValue = 0, ttEval = VALUE_NONE, ttDepth = 0, tbBound = 0, ttBound = 0;
     int R, newDepth, rAlpha, rBeta, oldAlpha = alpha;
     int inCheck, isQuiet, improving, extension, singular, skipQuiets = 0;
     int eval, best = -MATE, syzygyMax = MATE, syzygyMin = -MATE, seeMargin[2];
@@ -439,7 +454,6 @@ int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth, bool 
             return alpha;
     }
 
-#if 0
     // Step 5. Probe the Syzygy Tablebases. tablebasesProbeWDL() handles all of
     // the conditions about the board, the existance of tables, the probe depth,
     // as well as to not probe at the Root. The return is defined by the Pyrrhic API
@@ -475,7 +489,6 @@ int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth, bool 
         if (PvNode && tbBound == BOUND_UPPER)
             syzygyMax = value;
     }
-#endif
 
     // Step 6. Initialize flags and values used by pruning and search methods
     search_init_goto:
@@ -613,10 +626,6 @@ int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth, bool 
     // reuse an already initialized MovePicker to verify Singular Extension
     if (!ns->excluded) init_picker(&ns->mp, thread, ttMove);
     while ((move = select_next(&ns->mp, thread, skipQuiets)) != NONE_MOVE) {
-        if (   (limits->limitedBySelf  && tm_finished(thread, tm))
-            || (limits->limitedByDepth && thread->depth >= limits->depthLimit)
-            || (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
-            break;
 
         const uint64_t starting_nodes = thread->nodes;
 
@@ -815,6 +824,10 @@ int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth, bool 
                 if (alpha >= beta) break;
             }
         }
+        if (   (limits->limitedBySelf  && tm_finished(thread, tm))
+            || (limits->limitedByDepth && thread->depth >= limits->depthLimit)
+            || (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
+            break;
     }
 
     // Step 20 (~760 elo). Update History counters on a fail high for a quiet move.
@@ -850,9 +863,6 @@ int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth, bool 
 }
 
 int qsearch(Thread *thread, PVariation *pv, int alpha, int beta) {
-
-    TimeManager *const tm = thread->tm;
-    Limits *const limits  = thread->limits;
 
     Board *const board  = &thread->board;
     NodeState *const ns = &thread->states[thread->height];
@@ -922,10 +932,6 @@ int qsearch(Thread *thread, PVariation *pv, int alpha, int beta) {
     // to beat the margin computed in the Delta Pruning step found above
     init_noisy_picker(&ns->mp, thread, NONE_MOVE, MAX(1, alpha - eval - QSSeeMargin));
     while ((move = select_next(&ns->mp, thread, 1)) != NONE_MOVE) {
-        if (   (limits->limitedBySelf  && tm_finished(thread, tm))
-            || (limits->limitedByDepth && thread->depth >= limits->depthLimit)
-            || (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
-            break;
 
         // Worst case which assumes we lose our piece immediately
         int pessimism = moveEstimatedValue(board, move)
@@ -977,9 +983,6 @@ int qsearch(Thread *thread, PVariation *pv, int alpha, int beta) {
 
 int staticExchangeEvaluation(Thread *thread, uint16_t move, int threshold) {
 
-    TimeManager *const tm = thread->tm;
-    Limits *const limits  = thread->limits;
-
     Board *board = &thread->board;
     int from, to, type, colour, balance, nextVictim;
     uint64_t bishops, rooks, occupied, attackers, myAttackers;
@@ -1025,11 +1028,6 @@ int staticExchangeEvaluation(Thread *thread, uint16_t move, int threshold) {
     colour = !board->turn;
 
     while (1) {
-        if (   (limits->limitedBySelf  && tm_finished(thread, tm))
-            || (limits->limitedByDepth && thread->depth >= limits->depthLimit)
-            || (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
-            break;
-
         // If we have no more attackers left we lose
         myAttackers = attackers & board->colours[colour];
         if (myAttackers == 0ull) break;
