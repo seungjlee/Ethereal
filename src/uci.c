@@ -63,9 +63,11 @@ int main(int argc, char **argv) {
     int chess960 = 0;
     int multiPV  = 1;
 
+    const int Megabytes = 1;
+
     // Initialize core components of Ethereal
     initAttacks(); initMasks(); initEval();
-    initSearch(); initZobrist(); tt_init(1, 16);
+    initSearch(); initZobrist(); tt_init(1, Megabytes);
     initPKNetwork(); nnue_incbin_init();
 
     // Create the UCI-board and our threads
@@ -95,7 +97,12 @@ int main(int argc, char **argv) {
 
     while (getInput(str)) {
 
-        if (strEquals(str, "uci")) {
+        if (strStartsWith(str, "gp")) {
+            uciPosition(str, &board, chess960);
+            strstr(str, "fen")[-1] = 0;
+            uciGo(&uciGoStruct, &pthreadsgo, threads, &board, multiPV, str);
+        }
+        else if (strEquals(str, "uci")) {
             printf("id name Ethereal " ETHEREAL_VERSION "\n");
             printf("id author Andrew Grant, Alayan & Laldon\n");
             printf("option name Hash type spin default 16 min 2 max 131072\n");
@@ -111,7 +118,6 @@ int main(int argc, char **argv) {
             printf("info string licensed to " LICENSE_OWNER "\n");
             printf("uciok\n"), fflush(stdout);
         }
-
         else if (strEquals(str, "isready"))
             printf("readyok\n"), fflush(stdout);
 
