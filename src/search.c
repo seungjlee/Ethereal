@@ -613,6 +613,10 @@ int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth, bool 
     // reuse an already initialized MovePicker to verify Singular Extension
     if (!ns->excluded) init_picker(&ns->mp, thread, ttMove);
     while ((move = select_next(&ns->mp, thread, skipQuiets)) != NONE_MOVE) {
+        if (   (limits->limitedBySelf  && tm_finished(thread, tm))
+            || (limits->limitedByDepth && thread->depth >= limits->depthLimit)
+            || (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
+            break;
 
         const uint64_t starting_nodes = thread->nodes;
 
@@ -811,11 +815,6 @@ int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth, bool 
                 if (alpha >= beta) break;
             }
         }
-
-        if (   (limits->limitedBySelf  && tm_finished(thread, tm))
-            || (limits->limitedByDepth && thread->depth >= limits->depthLimit)
-            || (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
-            break;
     }
 
     // Step 20 (~760 elo). Update History counters on a fail high for a quiet move.
@@ -923,6 +922,10 @@ int qsearch(Thread *thread, PVariation *pv, int alpha, int beta) {
     // to beat the margin computed in the Delta Pruning step found above
     init_noisy_picker(&ns->mp, thread, NONE_MOVE, MAX(1, alpha - eval - QSSeeMargin));
     while ((move = select_next(&ns->mp, thread, 1)) != NONE_MOVE) {
+        if (   (limits->limitedBySelf  && tm_finished(thread, tm))
+            || (limits->limitedByDepth && thread->depth >= limits->depthLimit)
+            || (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
+            break;
 
         // Worst case which assumes we lose our piece immediately
         int pessimism = moveEstimatedValue(board, move)
@@ -962,11 +965,6 @@ int qsearch(Thread *thread, PVariation *pv, int alpha, int beta) {
             if (alpha >= beta)
                 break;
         }
-
-        if (   (limits->limitedBySelf  && tm_finished(thread, tm))
-            || (limits->limitedByDepth && thread->depth >= limits->depthLimit)
-            || (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
-            break;
     }
 
     // Step 8. Store results of search into the Transposition Table.
