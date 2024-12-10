@@ -29,7 +29,7 @@
 #include "transposition.h"
 #include "types.h"
 
-#include "nnue/types.h"
+//#include "nnue/types.h"
 
 enum {
     STACK_OFFSET = 4,
@@ -64,7 +64,7 @@ struct Thread {
     uint64_t nodes, tbhits;
     int depth, seldepth, height, completed;
 
-    NNUEEvaluator *nnue;
+    void *nnue;
 
     Undo undoStack[STACK_SIZE];
     NodeState *states, nodeStates[STACK_SIZE];

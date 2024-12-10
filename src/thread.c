@@ -26,9 +26,9 @@
 #include "transposition.h"
 #include "types.h"
 
-#include "nnue/types.h"
-#include "nnue/accumulator.h"
-#include "nnue/utils.h"
+// #include "nnue/types.h"
+// #include "nnue/accumulator.h"
+// #include "nnue/utils.h"
 
 Thread* createThreadPool(int nthreads) {
 
@@ -49,7 +49,7 @@ Thread* createThreadPool(int nthreads) {
         threads[i].nthreads = nthreads;
 
         // Accumulator stack and table require alignment
-        threads[i].nnue     = nnue_create_evaluator();
+        //threads[i].nnue     = nnue_create_evaluator();
     }
 
     return threads;
@@ -57,8 +57,8 @@ Thread* createThreadPool(int nthreads) {
 
 void deleteThreadPool(Thread *threads) {
 
-    for (int i = 0; i < threads->nthreads; i++)
-        nnue_delete_evaluator(threads[i].nnue);
+    // for (int i = 0; i < threads->nthreads; i++)
+    //     nnue_delete_evaluator(threads[i].nnue);
 
     free(threads);
 }
@@ -101,7 +101,7 @@ void newSearchThreadPool(Thread *threads, Board *board, Limits *limits, TimeMana
         threads[i].board.thread = &threads[i];
 
         memset(threads[i].nodeStates, 0, sizeof(NodeState) * STACK_SIZE);
-        nnue_reset_evaluator(threads[i].nnue);
+        // nnue_reset_evaluator(threads[i].nnue);
     }
 }
 

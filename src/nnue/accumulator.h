@@ -30,6 +30,7 @@
 extern ALIGN64 int16_t in_weights[INSIZE * KPSIZE];
 extern ALIGN64 int16_t in_biases[KPSIZE];
 
+#if 0
 INLINE NNUEEvaluator* nnue_create_evaluator() {
     return align_malloc(sizeof(NNUEEvaluator));
 }
@@ -90,3 +91,4 @@ INLINE void nnue_remove_piece(Board *board, int piece, int sq) {
 int nnue_can_update(NNUEAccumulator *accum, Board *board, int colour);
 void nnue_update_accumulator(NNUEAccumulator *accum, Board *board, int colour, int relksq);
 void nnue_refresh_accumulator(NNUEEvaluator *nnue, NNUEAccumulator *accum, Board *board, int colour, int relksq);
+#endif

@@ -32,8 +32,8 @@
 #include "move.h"
 #include "movegen.h"
 #include "network.h"
-#include "nnue/nnue.h"
-#include "pyrrhic/tbprobe.h"
+// #include "nnue/nnue.h"
+// #include "pyrrhic/tbprobe.h"
 #include "search.h"
 #include "thread.h"
 #include "timeman.h"
@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
     initSearch(); initZobrist();
     int bytes_allocated = tt_init(1, 1);
     printf("Allocated size %d\n", bytes_allocated);
-    initPKNetwork(); nnue_incbin_init();
+    //initPKNetwork(); nnue_incbin_init();
 
     // Create the UCI-board and our threads
     threads = createThreadPool(1);
@@ -255,11 +255,11 @@ void uciSetOption(char *str, Thread **threads, int *multiPV, int *chess960) {
         printf("info string set Threads to %d\n", nthreads);
     }
 
-    if (strStartsWith(str, "setoption name EvalFile value ")) {
-        char *ptr = str + strlen("setoption name EvalFile value ");
-        if (!strStartsWith(ptr, "<empty>")) nnue_init(ptr);
-        printf("info string set EvalFile to %s\n", ptr);
-    }
+    // if (strStartsWith(str, "setoption name EvalFile value ")) {
+    //     char *ptr = str + strlen("setoption name EvalFile value ");
+    //     if (!strStartsWith(ptr, "<empty>")) nnue_init(ptr);
+    //     printf("info string set EvalFile to %s\n", ptr);
+    // }
 
     if (strStartsWith(str, "setoption name MultiPV value ")) {
         *multiPV = atoi(str + strlen("setoption name MultiPV value "));
