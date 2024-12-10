@@ -26,11 +26,11 @@ uint64_t ZobristEnpassKeys[FILE_NB];
 uint64_t ZobristCastleKeys[SQUARE_NB];
 uint64_t ZobristTurnKey;
 
+static uint64_t seed = 1070372ull;
+
 uint64_t rand64() {
 
     // http://vigna.di.unimi.it/ftp/papers/xorshift.pdf
-
-    static uint64_t seed = 1070372ull;
 
     seed ^= seed >> 12;
     seed ^= seed << 25;

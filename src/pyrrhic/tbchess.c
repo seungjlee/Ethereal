@@ -147,14 +147,14 @@ uint64_t pyrrhic_calc_key_from_pcs(int *pieces, int mirror) {
          + pieces[PYRRHIC_BPAWN   ^ (mirror ? 8 : 0)] * PYRRHIC_PRIME_BPAWN;
 }
 
-uint64_t pyrrhic_calc_key_from_pieces(uint8_t *pieces, int length) {
+static const uint64_t PyrrhicPrimes[] = {
+    PYRRHIC_PRIME_NONE , PYRRHIC_PRIME_WPAWN , PYRRHIC_PRIME_WKNIGHT, PYRRHIC_PRIME_WBISHOP,
+    PYRRHIC_PRIME_WROOK, PYRRHIC_PRIME_WQUEEN, PYRRHIC_PRIME_WKING  , PYRRHIC_PRIME_NONE   ,
+    PYRRHIC_PRIME_NONE , PYRRHIC_PRIME_BPAWN , PYRRHIC_PRIME_BKNIGHT, PYRRHIC_PRIME_BBISHOP,
+    PYRRHIC_PRIME_BROOK, PYRRHIC_PRIME_BQUEEN, PYRRHIC_PRIME_BKING  , PYRRHIC_PRIME_NONE   ,
+};
 
-    static const uint64_t PyrrhicPrimes[] = {
-        PYRRHIC_PRIME_NONE , PYRRHIC_PRIME_WPAWN , PYRRHIC_PRIME_WKNIGHT, PYRRHIC_PRIME_WBISHOP,
-        PYRRHIC_PRIME_WROOK, PYRRHIC_PRIME_WQUEEN, PYRRHIC_PRIME_WKING  , PYRRHIC_PRIME_NONE   ,
-        PYRRHIC_PRIME_NONE , PYRRHIC_PRIME_BPAWN , PYRRHIC_PRIME_BKNIGHT, PYRRHIC_PRIME_BBISHOP,
-        PYRRHIC_PRIME_BROOK, PYRRHIC_PRIME_BQUEEN, PYRRHIC_PRIME_BKING  , PYRRHIC_PRIME_NONE   ,
-    };
+uint64_t pyrrhic_calc_key_from_pieces(uint8_t *pieces, int length) {
 
     uint64_t key = 0;
     for (int i = 0; i < length; i++)

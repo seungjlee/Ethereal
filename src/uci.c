@@ -63,11 +63,11 @@ int main(int argc, char **argv) {
     int chess960 = 0;
     int multiPV  = 1;
 
-    const int Megabytes = 1;
-
     // Initialize core components of Ethereal
     initAttacks(); initMasks(); initEval();
-    initSearch(); initZobrist(); tt_init(1, Megabytes);
+    initSearch(); initZobrist();
+    int bytes_allocated = tt_init(1, 1);
+    printf("Allocated size %d\n", bytes_allocated);
     initPKNetwork(); nnue_incbin_init();
 
     // Create the UCI-board and our threads
@@ -221,9 +221,14 @@ void uciGo(UCIGoStruct *ucigo, pthread_t *pthread, Thread *threads, Board *board
     ucigo->board   = board;
     ucigo->threads = threads;
 
+    printf("Number of threads: %d\n", ucigo->threads->nthreads);
     // Spawn a new thread to handle the search
+#ifdef ENABLE_MULTITHREAD
     pthread_create(pthread, NULL, &start_search_threads, ucigo);
     pthread_detach(*pthread);
+#else
+    start_search_threads(ucigo);
+#endif
 }
 
 void uciSetOption(char *str, Thread **threads, int *multiPV, int *chess960) {
@@ -266,6 +271,7 @@ void uciSetOption(char *str, Thread **threads, int *multiPV, int *chess960) {
         printf("info string set MoveOverhead to %d\n", MoveOverhead);
     }
 
+#if 0
     if (strStartsWith(str, "setoption name SyzygyPath value ")) {
         char *ptr = str + strlen("setoption name SyzygyPath value ");
         if (!strStartsWith(ptr, "<empty>")) tb_init(ptr);
@@ -276,6 +282,7 @@ void uciSetOption(char *str, Thread **threads, int *multiPV, int *chess960) {
         TB_PROBE_DEPTH = atoi(str + strlen("setoption name SyzygyProbeDepth value "));
         printf("info string set SyzygyProbeDepth to %u\n", TB_PROBE_DEPTH);
     }
+#endif
 
     if (strStartsWith(str, "setoption name Normalize value ")) {
         if (strStartsWith(str, "setoption name Normalize value true"))

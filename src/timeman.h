@@ -34,7 +34,7 @@
 struct TimeManager {
     int pv_stability;
     double start_time, ideal_usage, max_usage;
-    uint64_t nodes[0x10000];
+    uint64_t nodes[0x8000];
 };
 
 double get_real_time();

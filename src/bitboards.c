@@ -32,8 +32,8 @@ int fileOf(int sq) {
     return sq % FILE_NB;
 }
 
+static const int Mirror[] = {0,1,2,3,3,2,1,0};
 int mirrorFile(int file) {
-    static const int Mirror[] = {0,1,2,3,3,2,1,0};
     assert(0 <= file && file < FILE_NB);
     return Mirror[file];
 }

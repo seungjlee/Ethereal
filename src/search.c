@@ -174,8 +174,10 @@ void *start_search_threads(void *arguments) {
     // Execute search, setting best and ponder moves
     getBestMove(threads, board, limits, &best, &ponder, &score);
 
+#ifdef ENABLE_MULTITHREAD
     // UCI spec does not want reports until out of pondering
     while (IS_PONDERING);
+#endif
 
     // Report best move ( we should always have one )
     moveToString(best, str, board->chess960);
@@ -204,21 +206,25 @@ void getBestMove(Thread *threads, Board *board, Limits *limits, uint16_t *best, 
     newSearchThreadPool(threads, board, limits, &tm);
 
     // Allow Syzygy to refine the move list for optimal results
-    if (!limits->limitedByMoves && limits->multiPV == 1)
-        tablebasesProbeDTZ(board, limits);
+    // if (!limits->limitedByMoves && limits->multiPV == 1)
+    //     tablebasesProbeDTZ(board, limits);
 
+#ifdef ENABLE_MULTITHREAD
     // Create a new thread for each of the helpers and reuse the current
     // thread for the main thread, which avoids some overhead and saves
     // us from having the current thread eating CPU time while waiting
     for (int i = 1; i < threads->nthreads; i++)
         pthread_create(&pthreads[i], NULL, &iterativeDeepening, &threads[i]);
+#endif
     iterativeDeepening((void*) &threads[0]);
 
+#ifdef ENABLE_MULTITHREAD
     // When the main thread exits it should signal for the helpers to
     // shutdown. Wait until all helpers have finished before moving on
     ABORT_SIGNAL = 1;
     for (int i = 1; i < threads->nthreads; i++)
         pthread_join(pthreads[i], NULL);
+#endif
 
     // Pick the best of our completed threads
     select_from_threads(threads, best, ponder, score);

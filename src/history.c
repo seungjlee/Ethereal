@@ -65,7 +65,7 @@ static int16_t* underlying_capture_history(Thread *thread, uint16_t move) {
 
 static void underlying_quiet_history(Thread *thread, uint16_t move, int16_t *histories[3]) {
 
-    static int16_t NULL_HISTORY; // Always zero to handle missing CM/FM history
+    static const int16_t NULL_HISTORY = 0; // Always zero to handle missing CM/FM history
 
     NodeState *const ns    = &thread->states[thread->height];
     const uint64_t threats = thread->board.threats;
@@ -137,13 +137,13 @@ int get_capture_history(Thread *thread, uint16_t move) {
          + *underlying_capture_history(thread, move);
 }
 
+static const int MVVAugment[] = { 0, 2400, 2400, 4800, 9600 };
+
 void get_capture_histories(Thread *thread, uint16_t *moves, int *scores, int start, int length) {
 
     // Grab histories for all of the capture moves. Since this is used for sorting,
     // we include an MVV-LVA factor to improve sorting. Additionally, we add 64k to
     // the history score to ensure it is >= 0 to differentiate good from bad later on
-
-    static const int MVVAugment[] = { 0, 2400, 2400, 4800, 9600 };
 
     for (int i = start; i < start + length; i++)
         scores[i] = 64000 + get_capture_history(thread, moves[i])

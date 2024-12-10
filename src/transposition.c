@@ -53,19 +53,18 @@ void tt_prefetch(uint64_t hash) { __builtin_prefetch(&Table.buckets[hash & Table
 
 
 int tt_init(int nthreads, int megabytes) {
-
-    const uint64_t MB = 1ull << 20;
-    uint64_t keySize = 16ull;
+    // const uint64_t MB = 1ull << 20;
+    uint64_t keySize = 12ull;
 
     // Cleanup memory when resizing the table
     if (Table.hashMask) free(Table.buckets);
 
     // Default keysize of 16 bits maps to a 2MB TTable
-    assert((1ull << 16ull) * sizeof(TTBucket) == 2 * MB);
+    // assert((1ull << 16ull) * sizeof(TTBucket) == 2 * MB);
 
     // Find the largest keysize that is still within our given megabytes
-    while ((1ull << keySize) * sizeof(TTBucket) <= megabytes * MB / 2) keySize++;
-    assert((1ull << keySize) * sizeof(TTBucket) <= megabytes * MB);
+    // while ((1ull << keySize) * sizeof(TTBucket) <= megabytes * MB / 2) keySize++;
+    // assert((1ull << keySize) * sizeof(TTBucket) <= megabytes * MB);
 
 #if 0 //defined(__linux__) && !defined(__ANDROID__)
 
@@ -85,7 +84,7 @@ int tt_init(int nthreads, int megabytes) {
     tt_clear(nthreads);
 
     // Return the number of MB actually allocated for the TTable
-    return ((Table.hashMask + 1) * sizeof(TTBucket)) / MB;
+    return ((Table.hashMask + 1) * sizeof(TTBucket));
 }
 
 int tt_hashfull() {

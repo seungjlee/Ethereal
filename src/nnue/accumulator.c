@@ -31,8 +31,8 @@
 #include "../types.h"
 
 
+static const int Mirror[] = { 3, 2, 1, 0, 0, 1, 2, 3 };
 static int sq64_to_sq32(int sq) {
-    static const int Mirror[] = { 3, 2, 1, 0, 0, 1, 2, 3 };
     return ((sq >> 1) & ~0x3) + Mirror[sq & 0x7];
 }
 
