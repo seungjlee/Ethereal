@@ -22,7 +22,8 @@
 ### Section 1. Flag Declarations. Detect NNUE/Classic and Release/Native
 ### =========================================================================
 
-CC   = clang
+#CC   = clang
+CC   = g++
 SRC  = *.c pyrrhic/tbprobe.c
 LIBS = -lpthread -lm
 NN   = -DUSE_NNUE=0
@@ -86,6 +87,8 @@ endif
 ifneq ($(findstring __SSSE3__, $(PROPS)),)
 	CFLAGS += -DUSE_SSSE3
 endif
+
+CFLAGS += -fpermissive
 
 # Determine whether we are using GCC or Clang for potential PGO
 
