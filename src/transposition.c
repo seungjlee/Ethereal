@@ -18,7 +18,9 @@
 /*                                                                            */
 /******************************************************************************/
 
+#ifdef ENABLE_MULTITHREAD
 #include <pthread.h>
+#endif
 
 #include "board.h"
 #include "evaluate.h"

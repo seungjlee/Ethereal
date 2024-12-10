@@ -18,7 +18,9 @@
 
 #pragma once
 
+#ifdef ENABLE_MULTITHREAD
 #include <pthread.h>
+#endif
 #include <stdint.h>
 
 #include "types.h"
@@ -53,7 +55,11 @@ struct UCIGoStruct {
     Limits  limits;
 };
 
+#ifdef ENABLE_MULTITHREAD
 void uciGo(UCIGoStruct *ucigo, pthread_t *pthread, Thread *threads, Board *board, int multiPV, char *str);
+#else
+void uciGo(UCIGoStruct *ucigo, Thread *threads, Board *board, int multiPV, char *str);
+#endif
 void uciSetOption(char *str, Thread **threads, int *multiPV, int *chess960);
 void uciPosition(char *str, Board *board, int chess960);
 

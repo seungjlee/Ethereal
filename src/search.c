@@ -19,7 +19,9 @@
 #include <assert.h>
 #include <inttypes.h>
 #include <math.h>
+#ifdef ENABLE_MULTITHREAD
 #include <pthread.h>
+#endif
 #include <setjmp.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -48,9 +50,11 @@
 int LMRTable[64][64];
 int LateMovePruningCounts[2][11];
 
+#ifdef ENABLE_MULTITHREAD
 volatile int ABORT_SIGNAL; // Global ABORT flag for threads
 volatile int IS_PONDERING; // Global PONDER flag for threads
-volatile int ANALYSISMODE; // Whether to make some changes for Analysis
+#endif
+//volatile int ANALYSISMODE; // Whether to make some changes for Analysis
 
 
 static void select_from_threads(Thread *threads, uint16_t *best, uint16_t *ponder, int *score) {
@@ -174,8 +178,10 @@ void *start_search_threads(void *arguments) {
     // Execute search, setting best and ponder moves
     getBestMove(threads, board, limits, &best, &ponder, &score);
 
+#ifdef ENABLE_MULTITHREAD
     // UCI spec does not want reports until out of pondering
     while (IS_PONDERING);
+#endif
 
     // Report best move ( we should always have one )
     moveToString(best, str, board->chess960);
@@ -202,7 +208,9 @@ void getBestMove(Thread *threads, Board *board, Limits *limits, uint16_t *best, 
 
     // Minor house keeping for starting a search
     tt_update(); // Table has an age component
+#ifdef ENABLE_MULTITHREAD
     ABORT_SIGNAL = 0; // Otherwise Threads will exit
+#endif
     newSearchThreadPool(threads, board, limits, &tm);
 
     // Allow Syzygy to refine the move list for optimal results
@@ -218,10 +226,10 @@ void getBestMove(Thread *threads, Board *board, Limits *limits, uint16_t *best, 
 #endif
     iterativeDeepening((void*) &threads[0]);
 
+#ifdef ENABLE_MULTITHREAD
     // When the main thread exits it should signal for the helpers to
     // shutdown. Wait until all helpers have finished before moving on
     ABORT_SIGNAL = 1;
-#ifdef ENABLE_MULTITHREAD
     for (int i = 1; i < threads->nthreads; i++)
         pthread_join(pthreads[i], NULL);
 #endif
@@ -264,8 +272,10 @@ void* iterativeDeepening(void *vthread) {
         // Update clock based on score and pv changes
         tm_update(thread, limits, tm);
 
+#ifdef ENABLE_MULTITHREAD
         // Don't want to exit while pondering
         if (IS_PONDERING) continue;
+#endif
 
         // Check for termination by any of the possible limits
         if (   (limits->limitedBySelf  && tm_finished(thread, tm))
@@ -361,11 +371,13 @@ int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth, bool 
     thread->seldepth = RootNode ? 0 : MAX(thread->seldepth, thread->height);
     thread->nodes++;
 
+#ifdef ENABLE_MULTITHREAD
     // Step 2. Abort Check. Exit the search if signaled by main thread or the
     // UCI thread, or if the search time has expired outside pondering mode
     if (   (ABORT_SIGNAL && thread->depth > 1)
         || (tm_stop_early(thread) && !IS_PONDERING))
         longjmp(thread->jbuffer, 1);
+#endif
 
     // Step 3. Check for early exit conditions. Don't take early exits in
     // the RootNode, since this would prevent us from having a best move
@@ -835,11 +847,13 @@ int qsearch(Thread *thread, PVariation *pv, int alpha, int beta) {
     thread->seldepth = MAX(thread->seldepth, thread->height);
     thread->nodes++;
 
+#ifdef ENABLE_MULTITHREAD
     // Step 1. Abort Check. Exit the search if signaled by main thread or the
     // UCI thread, or if the search time has expired outside pondering mode
     if (   (ABORT_SIGNAL && thread->depth > 1)
         || (tm_stop_early(thread) && !IS_PONDERING))
         longjmp(thread->jbuffer, 1);
+#endif
 
     // Step 2. Draw Detection. Check for the fifty move rule, repetition, or insufficient
     // material. Add variance to the draw score, to avoid blindness to 3-fold lines

@@ -17,7 +17,9 @@
 */
 
 #include <inttypes.h>
+#ifdef ENABLE_MULTITHREAD
 #include <pthread.h>
+#endif
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -45,9 +47,11 @@
 int NORMALIZE_EVAL = 1;
 
 extern int MoveOverhead;          // Defined by time.c
-extern unsigned TB_PROBE_DEPTH;   // Defined by syzygy.c
+//extern unsigned TB_PROBE_DEPTH;   // Defined by syzygy.c
+#ifdef ENABLE_MULTITHREAD
 extern volatile int ABORT_SIGNAL; // Defined by search.c
 extern volatile int IS_PONDERING; // Defined by search.c
+#endif
 extern PKNetwork PKNN;            // Defined by network.c
 
 const char *StartPosition = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -57,7 +61,9 @@ int main(int argc, char **argv) {
     Board board;
     char str[8192] = {0};
     Thread *threads;
+#ifdef ENABLE_MULTITHREAD
     pthread_t pthreadsgo;
+#endif
     UCIGoStruct uciGoStruct;
 
     int chess960 = 0;
@@ -100,7 +106,7 @@ int main(int argc, char **argv) {
         if (strStartsWith(str, "gp")) {
             boardFromFEN(&board, strstr(str, "fen") + strlen("fen "), chess960);
             strstr(str, "fen")[-1] = 0;
-            uciGo(&uciGoStruct, &pthreadsgo, threads, &board, multiPV, str);
+            uciGo(&uciGoStruct, threads, &board, multiPV, str);
         }
         else if (strEquals(str, "uci")) {
             printf("id name Ethereal " ETHEREAL_VERSION "\n");
@@ -131,13 +137,19 @@ int main(int argc, char **argv) {
             uciPosition(str, &board, chess960);
 
         else if (strStartsWith(str, "go"))
+#ifdef ENABLE_MULTITHREAD
             uciGo(&uciGoStruct, &pthreadsgo, threads, &board, multiPV, str);
+#else
+            uciGo(&uciGoStruct, threads, &board, multiPV, str);
+#endif
 
+#ifdef ENABLE_MULTITHREAD
         else if (strEquals(str, "ponderhit"))
             IS_PONDERING = 0;
 
         else if (strEquals(str, "stop"))
             ABORT_SIGNAL = 1, IS_PONDERING = 0;
+#endif
 
         else if (strEquals(str, "quit"))
             break;
@@ -152,7 +164,12 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-void uciGo(UCIGoStruct *ucigo, pthread_t *pthread, Thread *threads, Board *board, int multiPV, char *str) {
+#ifdef ENABLE_MULTITHREAD
+void uciGo(UCIGoStruct *ucigo, pthread_t *pthread, Thread *threads, Board *board, int multiPV, char *str)
+#else
+void uciGo(UCIGoStruct *ucigo, Thread *threads, Board *board, int multiPV, char *str)
+#endif
+{
 
     /// Parse the entire "go" command in order to fill out a Limits struct, found at ucigo->limits.
     /// After we have processed all of this, we can execute a new search thread, held by *pthread,
@@ -171,7 +188,9 @@ void uciGo(UCIGoStruct *ucigo, pthread_t *pthread, Thread *threads, Board *board
     Limits *limits = &ucigo->limits;
     memset(limits, 0, sizeof(Limits));
 
+#ifdef ENABLE_MULTITHREAD
     IS_PONDERING = FALSE; // Reset PONDERING every time to be safe
+#endif
 
     for (ptr = strtok(NULL, " "); ptr != NULL; ptr = strtok(NULL, " ")) {
 
@@ -190,7 +209,9 @@ void uciGo(UCIGoStruct *ucigo, pthread_t *pthread, Thread *threads, Board *board
         // Parse special search modes
         if (strEquals(ptr, "infinite"   )) limits->limitedByNone  = TRUE;
         if (strEquals(ptr, "searchmoves")) limits->limitedByMoves = TRUE;
+#ifdef ENABLE_MULTITHREAD
         if (strEquals(ptr, "ponder"     )) IS_PONDERING           = TRUE;
+#endif
 
         // Parse any specific moves that we are to search
         for (int i = 0; i < size; i++) {
@@ -225,11 +246,10 @@ void uciGo(UCIGoStruct *ucigo, pthread_t *pthread, Thread *threads, Board *board
     printf("Number of threads: %d\n", ucigo->threads->nthreads);
 #endif
     // Spawn a new thread to handle the search
-#if 0
+#ifdef ENABLE_MULTITHREAD
     pthread_create(pthread, NULL, &start_search_threads, ucigo);
     pthread_detach(*pthread);
 #else
-    (void)(pthread);
     start_search_threads(ucigo);
 #endif
 }
