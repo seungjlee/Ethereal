@@ -24,7 +24,7 @@
 
 #CC   = clang
 CC   = gcc
-SRC  = *.c pyrrhic/tbprobe.c
+SRC  = *.c #pyrrhic/tbprobe.c
 LIBS = -lpthread -lm
 NN   = -DUSE_NNUE=0
 EXE  = Ethereal
@@ -42,10 +42,10 @@ EXE  = Ethereal
 # endif
 
 WFLAGS   = -std=gnu11 -Wall -Wextra -Wshadow
-RFLAGS   = -O3 $(WFLAGS) -DNDEBUG -flto $(NN) $(NNFLAGS) -static
+#RFLAGS   = -O3 $(WFLAGS) -DNDEBUG -flto $(NN) $(NNFLAGS) -static
 CFLAGS   = -O3 $(WFLAGS) -DNDEBUG -flto $(NN) $(NNFLAGS) -march=native
-TFLAGS   = -O3 $(WFLAGS) -DNDEBUG -flto $(NN) $(NNFLAGS) -march=native -fopenmp -DTUNE
-PGOFLAGS = -fno-asynchronous-unwind-tables
+#TFLAGS   = -O3 $(WFLAGS) -DNDEBUG -flto $(NN) $(NNFLAGS) -march=native -fopenmp -DTUNE
+#PGOFLAGS = -fno-asynchronous-unwind-tables
 
 #POPCNTFLAGS = -DUSE_POPCNT -mpopcnt
 #PEXTFLAGS   = -DUSE_PEXT -mbmi2 $(POPCNTFLAGS)
@@ -87,8 +87,6 @@ endif
 ifneq ($(findstring __SSSE3__, $(PROPS)),)
 	CFLAGS += -DUSE_SSSE3
 endif
-
-CFLAGS += -fpermissive
 
 # Determine whether we are using GCC or Clang for potential PGO
 

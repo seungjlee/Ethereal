@@ -31,13 +31,13 @@
 #include "bitboards.h"
 #include "board.h"
 #include "evaluate.h"
-#include "pyrrhic/tbprobe.h"
+// #include "pyrrhic/tbprobe.h"
 #include "history.h"
 #include "move.h"
 #include "movegen.h"
 #include "movepicker.h"
 #include "search.h"
-#include "syzygy.h"
+// #include "syzygy.h"
 #include "thread.h"
 #include "timeman.h"
 #include "transposition.h"
@@ -414,6 +414,7 @@ int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth, bool 
             return alpha;
     }
 
+#if 0
     // Step 5. Probe the Syzygy Tablebases. tablebasesProbeWDL() handles all of
     // the conditions about the board, the existance of tables, the probe depth,
     // as well as to not probe at the Root. The return is defined by the Pyrrhic API
@@ -449,6 +450,7 @@ int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth, bool 
         if (PvNode && tbBound == BOUND_UPPER)
             syzygyMax = value;
     }
+#endif
 
     // Step 6. Initialize flags and values used by pruning and search methods
     search_init_goto:
