@@ -25,7 +25,7 @@
 #include "board.h"
 #include "cmdline.h"
 #include "move.h"
-#include "pgn.h"
+// #include "pgn.h"
 #include "search.h"
 #include "thread.h"
 #include "timeman.h"
@@ -169,10 +169,10 @@ void handleCommandLine(int argc, char **argv) {
     }
 
     // Convert a PGN file to an nndata file
-    if (argc > 3 && strEquals(argv[1], "nndata")) {
-        process_pgn(argv[2], argv[3]);
-        exit(EXIT_SUCCESS);
-    }
+    // if (argc > 3 && strEquals(argv[1], "nndata")) {
+    //     process_pgn(argv[2], argv[3]);
+    //     exit(EXIT_SUCCESS);
+    // }
 
     // Tuner is being run from the command line
     #ifdef TUNE
