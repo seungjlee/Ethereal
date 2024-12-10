@@ -21,7 +21,7 @@
 #pragma GCC diagnostic ignored "-Wcast-function-type"
 #endif
 
-#include "windows.h"
+//#include "windows.h"
 
 #ifndef _WIN32
 
@@ -33,7 +33,7 @@ static int bestGroup(int index) {
 
     // bestGroup() retrieves logical processor information using Windows specific
     // API and returns the best group id for the thread with a given index. Original
-    // code from Texel by Peter Österlund. Current code from Stockfish authors.
+    // code from Texel by Peter ï¿½sterlund. Current code from Stockfish authors.
 
     int groupSize = 0, groups[2048];
     int nodes = 0, cores = 0, threads = 0;
