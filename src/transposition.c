@@ -67,7 +67,7 @@ int tt_init(int nthreads, int megabytes) {
     while ((1ull << keySize) * sizeof(TTBucket) <= megabytes * MB / 2) keySize++;
     assert((1ull << keySize) * sizeof(TTBucket) <= megabytes * MB);
 
-#if defined(__linux__) && !defined(__ANDROID__)
+#if 0 //defined(__linux__) && !defined(__ANDROID__)
 
     // On Linux systems we align on 2MB boundaries and request Huge Pages
     Table.buckets = aligned_alloc(2 * MB, (1ull << keySize) * sizeof(TTBucket));
