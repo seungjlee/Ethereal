@@ -52,7 +52,8 @@ void tt_update() { Table.generation += TT_MASK_BOUND + 1; }
 void tt_prefetch(uint64_t hash) { __builtin_prefetch(&Table.buckets[hash & Table.hashMask]); }
 
 
-int tt_init(int nthreads, int) {
+int tt_init(int nthreads, int megabytes) {
+    (void)(megabytes);
     // const uint64_t MB = 1ull << 20;
     uint64_t keySize = 10ull;
 
