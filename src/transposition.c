@@ -171,23 +171,29 @@ void tt_clear(int nthreads) {
 
     // Only use 1/4th of the enabled search Threads
     int nworkers = MAX(1, nthreads / 4);
+#ifdef ENABLE_MULTITHREAD
     pthread_t pthreads[nworkers];
+#endif
     struct TTClear ttclears[nworkers];
 
     // Initalize the data passed via a void* in pthread_create()
     for (int i = 0; i < nworkers; i++)
         ttclears[i] = (struct TTClear) { i, nworkers };
 
+#ifdef ENABLE_MULTITHREAD
     // Launch each of the helper threads to clear their sections
     for (int i = 1; i < nworkers; i++)
         pthread_create(&pthreads[i], NULL, tt_clear_threaded, &ttclears[i]);
+#endif
 
     // Reuse this thread for the 0th sections of the Transposition Table
     tt_clear_threaded((void*) &ttclears[0]);
 
+#ifdef ENABLE_MULTITHREAD
     // Join each of the helper threads after they've cleared their sections
     for (int i = 1; i < nworkers; i++)
         pthread_join(pthreads[i], NULL);
+#endif
 }
 
 void *tt_clear_threaded(void *cargo) {
