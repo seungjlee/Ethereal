@@ -678,7 +678,7 @@ int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth, bool 
         if (    best > -TBWIN_IN_MAX
             &&  depth <= SEEPruningDepth
             &&  ns->mp.stage > STAGE_GOOD_NOISY
-            && !staticExchangeEvaluation(board, move, seeMargin[isQuiet] - hist / 128))
+            && !staticExchangeEvaluation(thread, move, seeMargin[isQuiet] - hist / 128))
             continue;
 
         // Apply move, skip if move is illegal
@@ -975,8 +975,12 @@ int qsearch(Thread *thread, PVariation *pv, int alpha, int beta) {
     return best;
 }
 
-int staticExchangeEvaluation(Board *board, uint16_t move, int threshold) {
+int staticExchangeEvaluation(Thread *thread, uint16_t move, int threshold) {
 
+    TimeManager *const tm = thread->tm;
+    Limits *const limits  = thread->limits;
+
+    Board *board = &thread->board;
     int from, to, type, colour, balance, nextVictim;
     uint64_t bishops, rooks, occupied, attackers, myAttackers;
 
@@ -1021,6 +1025,10 @@ int staticExchangeEvaluation(Board *board, uint16_t move, int threshold) {
     colour = !board->turn;
 
     while (1) {
+        if (   (limits->limitedBySelf  && tm_finished(thread, tm))
+            || (limits->limitedByDepth && thread->depth >= limits->depthLimit)
+            || (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
+            break;
 
         // If we have no more attackers left we lose
         myAttackers = attackers & board->colours[colour];

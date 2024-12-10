@@ -35,7 +35,7 @@ void* iterativeDeepening(void *vthread);
 void aspirationWindow(Thread *thread);
 int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth, bool cutnode);
 int qsearch(Thread *thread, PVariation *pv, int alpha, int beta);
-int staticExchangeEvaluation(Board *board, uint16_t move, int threshold);
+int staticExchangeEvaluation(Thread *thread, uint16_t move, int threshold);
 int singularity(Thread *thread, uint16_t ttMove, int ttValue, int depth, int PvNode, int alpha, int beta, bool cutnode);
 
 static const int WindowDepth   = 4;

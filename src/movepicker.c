@@ -76,7 +76,7 @@ void init_noisy_picker(MovePicker *mp, Thread *thread, uint16_t tt_move, int thr
     // Skip over the TT-move unless its a threshold-winning capture
     mp->stage += !moveIsTactical(&thread->board, tt_move)
               || !moveIsPseudoLegal(&thread->board, tt_move)
-              || !staticExchangeEvaluation(&thread->board, tt_move, threshold);
+              || !staticExchangeEvaluation(thread, tt_move, threshold);
 }
 
 uint16_t select_next(MovePicker *mp, Thread *thread, int skip_quiets) {
@@ -118,7 +118,7 @@ uint16_t select_next(MovePicker *mp, Thread *thread, int skip_quiets) {
 
                 // Skip moves which fail to beat our SEE margin. We flag those moves
                 // as failed with the value (-1), and then repeat the selection process
-                if (!staticExchangeEvaluation(board, mp->moves[best], mp->threshold)) {
+                if (!staticExchangeEvaluation(thread, mp->moves[best], mp->threshold)) {
                     mp->values[best] = -1;
                     continue;
                 }
