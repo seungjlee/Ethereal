@@ -30,7 +30,7 @@ enum { WHITE, BLACK };
 
 enum { PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING };
 
-enum { MAX_PLY = 64, MAX_MOVES = 128 };
+enum { MAX_PLY = 32, MAX_MOVES = 128 };
 
 enum {
     WHITE_PAWN   =  0, BLACK_PAWN   =  1,
