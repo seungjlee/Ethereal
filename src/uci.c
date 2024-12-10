@@ -223,7 +223,7 @@ void uciGo(UCIGoStruct *ucigo, pthread_t *pthread, Thread *threads, Board *board
 
     printf("Number of threads: %d\n", ucigo->threads->nthreads);
     // Spawn a new thread to handle the search
-#ifdef ENABLE_MULTITHREAD
+#if 1
     pthread_create(pthread, NULL, &start_search_threads, ucigo);
     pthread_detach(*pthread);
 #else

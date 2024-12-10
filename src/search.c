@@ -174,10 +174,8 @@ void *start_search_threads(void *arguments) {
     // Execute search, setting best and ponder moves
     getBestMove(threads, board, limits, &best, &ponder, &score);
 
-#ifdef ENABLE_MULTITHREAD
     // UCI spec does not want reports until out of pondering
     while (IS_PONDERING);
-#endif
 
     // Report best move ( we should always have one )
     moveToString(best, str, board->chess960);
@@ -218,10 +216,10 @@ void getBestMove(Thread *threads, Board *board, Limits *limits, uint16_t *best, 
 #endif
     iterativeDeepening((void*) &threads[0]);
 
-#ifdef ENABLE_MULTITHREAD
     // When the main thread exits it should signal for the helpers to
     // shutdown. Wait until all helpers have finished before moving on
     ABORT_SIGNAL = 1;
+#ifdef ENABLE_MULTITHREAD
     for (int i = 1; i < threads->nthreads; i++)
         pthread_join(pthreads[i], NULL);
 #endif
