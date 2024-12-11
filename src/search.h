@@ -25,7 +25,9 @@
 
 struct PVariation {
     int length, score;
-    uint16_t line[MAX_PLY];
+    //uint16_t line[MAX_PLY];
+    // Not sure if this should be MAX_PLY, but MAX_MOVES is currently safer.
+    uint16_t line[MAX_MOVES];
 };
 
 void initSearch();
