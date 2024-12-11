@@ -22,6 +22,8 @@
 
 extern const char *PieceLabel[COLOUR_NB];
 
+enum{ MAX_HISTORY = 16384 };
+
 struct Board {
     uint8_t squares[SQUARE_NB];
     uint64_t pieces[8], colours[3];
@@ -29,7 +31,7 @@ struct Board {
     uint64_t castleRooks, castleMasks[SQUARE_NB];
     int turn, epSquare, halfMoveCounter, fullMoveCounter;
     int psqtmat, numMoves, chess960;
-    uint64_t history[8192];
+    uint64_t history[MAX_HISTORY];
     Thread *thread;
 };
 
