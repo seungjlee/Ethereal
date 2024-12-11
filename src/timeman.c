@@ -50,6 +50,7 @@ void tm_init(const Limits *limits, TimeManager *tm) {
 
     tm->pv_stability = 0; // Clear our stability time usage heuristic
     tm->start_time = limits->start; // Save off the start time of the search
+#ifdef LIMITED_BY_SELF
     memset(tm->nodes, 0, sizeof(uint16_t) * 0x10000); // Clear Node counters
 
     // Allocate time if Ethereal is handling the clock
@@ -71,6 +72,7 @@ void tm_init(const Limits *limits, TimeManager *tm) {
         tm->ideal_usage = MIN(tm->ideal_usage, limits->time - MoveOverhead);
         tm->max_usage   = MIN(tm->max_usage,   limits->time - MoveOverhead);
     }
+#endif
 
     // Interface told us to search for a predefined duration
     if (limits->limitedByTime) {
@@ -79,6 +81,7 @@ void tm_init(const Limits *limits, TimeManager *tm) {
     }
 }
 
+#ifdef LIMITED_BY_SELF
 void tm_update(const Thread *thread, const Limits *limits, TimeManager *tm) {
 
     // Don't update our Time Managment plans at very low depths
@@ -111,6 +114,7 @@ bool tm_finished(const Thread *thread, const TimeManager *tm) {
 
     return elapsed_time(tm) > tm->ideal_usage * pv_factor * score_factor * nodes_factor;
 }
+#endif
 
 bool tm_stop_early(const Thread *thread) {
 
@@ -125,6 +129,10 @@ bool tm_stop_early(const Thread *thread) {
 
     return  thread->depth > 1
         && (thread->nodes & 1023) == 1023
+#ifdef LIMITED_BY_SELF
         && (limits->limitedBySelf || limits->limitedByTime)
+#else
+        && limits->limitedByTime
+#endif
         &&  elapsed_time(thread->tm) >= thread->tm->max_usage;
 }

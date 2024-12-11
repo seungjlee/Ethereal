@@ -43,7 +43,10 @@
 
 struct Limits {
     double start, time, inc, mtg, timeLimit;
-    int limitedByNone, limitedByTime, limitedBySelf;
+    int limitedByNone, limitedByTime;
+#ifdef LIMITED_BY_SELF
+    int limitedBySelf;
+#endif
     int limitedByDepth, limitedByMoves, limitedByNodes;
     int multiPV, depthLimit; uint64_t nodeLimit;
     uint16_t searchMoves[MAX_MOVES], excludedMoves[MAX_MOVES];

@@ -280,8 +280,10 @@ void* iterativeDeepening(void *vthread) {
         if (limits->multiPV > 1)
             report_multipv_lines(thread);
 
+#ifdef LIMITED_BY_SELF
         // Update clock based on score and pv changes
         tm_update(thread, limits, tm);
+#endif
 
 #ifdef ENABLE_MULTITHREAD
         // Don't want to exit while pondering
@@ -289,9 +291,13 @@ void* iterativeDeepening(void *vthread) {
 #endif
 
         // Check for termination by any of the possible limits
-        if (   (limits->limitedBySelf  && tm_finished(thread, tm))
-            || (limits->limitedByDepth && thread->depth >= limits->depthLimit)
-            || (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
+#ifdef LIMITED_BY_SELF
+        if (   (limits->limitedBySelf  && tm_finished(thread, tm)) ||
+#else
+        if (
+#endif
+            (limits->limitedByDepth && thread->depth >= limits->depthLimit) ||
+            (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
             break;
     }
 
@@ -346,10 +352,14 @@ void aspirationWindow(Thread *thread) {
             depth = depth - (abs(pv.score) <= MATE / 2);
             update_best_line(thread, &pv);
         }
-        
-        if (   (limits->limitedBySelf  && tm_finished(thread, tm))
-            || (limits->limitedByDepth && thread->depth >= limits->depthLimit)
-            || (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
+
+#ifdef LIMITED_BY_SELF
+        if (   (limits->limitedBySelf  && tm_finished(thread, tm)) ||
+#else
+        if (
+#endif
+            (limits->limitedByDepth && thread->depth >= limits->depthLimit) ||
+            (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
             break;
 
         // Expand the search window
@@ -606,9 +616,13 @@ int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth, bool 
                 if (value >= rBeta) return value;
             }
 
-            if (   (limits->limitedBySelf  && tm_finished(thread, tm))
-                || (limits->limitedByDepth && thread->depth >= limits->depthLimit)
-                || (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
+#ifdef LIMITED_BY_SELF
+            if (   (limits->limitedBySelf  && tm_finished(thread, tm)) ||
+#else
+            if (
+#endif
+                (limits->limitedByDepth && thread->depth >= limits->depthLimit) ||
+                (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
                 break;
         }
     }
@@ -627,7 +641,9 @@ int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth, bool 
     if (!ns->excluded) init_picker(&ns->mp, thread, ttMove);
     while ((move = select_next(&ns->mp, thread, skipQuiets)) != NONE_MOVE) {
 
+#ifdef LIMITED_BY_SELF
         const uint64_t starting_nodes = thread->nodes;
+#endif
 
         // MultiPV and UCI searchmoves may limit our search options
         if (RootNode && moveExaminedByMultiPV(thread, move)) continue;
@@ -698,11 +714,13 @@ int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth, bool 
         if (isQuiet) quietsTried[quietsPlayed++] = move;
         else capturesTried[capturesPlayed++] = move;
 
+#ifdef REPORT_DIAGNOSTICS_CURRENT_MOVE
         // The UCI spec allows us to output information about the current move
         // that we are going to search. We only do this from the main thread,
         // and we wait a few seconds in order to avoid floiding the output
         if (RootNode && !thread->index && elapsed_time(thread->tm) > CurrmoveTimerMS)
             uciReportCurrentMove(board, move, played + thread->multiPV, thread->depth);
+#endif
 
         // Identify moves which are candidate singular moves
         singular =  !RootNode
@@ -801,9 +819,11 @@ int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth, bool 
         // Reset the extension tracker
         if (extension > 1) ns->dextensions--;
 
+#ifdef LIMITED_BY_SELF
         // Track where nodes were spent in the Main thread at the Root
         if (RootNode && !thread->index)
             thread->tm->nodes[move] += thread->nodes - starting_nodes;
+#endif
 
         // Step 19. Update search stats for the best move and its value. Update
         // our lower bound (alpha) if exceeded, and also update the PV in that case
@@ -824,9 +844,13 @@ int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth, bool 
                 if (alpha >= beta) break;
             }
         }
-        if (   (limits->limitedBySelf  && tm_finished(thread, tm))
-            || (limits->limitedByDepth && thread->depth >= limits->depthLimit)
-            || (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
+#ifdef LIMITED_BY_SELF
+        if (   (limits->limitedBySelf  && tm_finished(thread, tm)) ||
+#else
+        if (
+#endif
+            (limits->limitedByDepth && thread->depth >= limits->depthLimit) ||
+            (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
             break;
     }
 

@@ -226,9 +226,11 @@ void uciGo(UCIGoStruct *ucigo, Thread *threads, Board *board, int multiPV, char 
     limits->limitedByDepth = limits->depthLimit != 0;
     limits->limitedByNodes = limits->nodeLimit  != 0;
 
+#ifdef LIMITED_BY_SELF
     // No special case nor infinite, so we set our own time
     limits->limitedBySelf  = !limits->depthLimit    && !limits->timeLimit
                           && !limits->limitedByNone && !limits->nodeLimit;
+#endif
 
     // Pick the time values for the colour we are playing as
     limits->start = (board->turn == WHITE) ? start : start;
