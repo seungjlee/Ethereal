@@ -36,12 +36,11 @@ static char *PKWeights[] = {
     ""
 };
 
-static int computePKNetworkIndex(int colour, int piece, int sq) {
+static inline int computePKNetworkIndex(int colour, int piece, int sq) {
     return (64 + 48) * colour
          + (48 * (piece == KING))
          + sq - 8 * (piece == PAWN);
 }
-
 
 void initPKNetwork() {
 

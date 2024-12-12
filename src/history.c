@@ -27,13 +27,13 @@
 #include "thread.h"
 #include "types.h"
 
-static int stat_bonus(int depth) {
+static inline int stat_bonus(int depth) {
 
     // Approximately verbatim stat bonus formula from Stockfish
     return depth > 13 ? 32 : 16 * depth * depth + 128 * MAX(depth - 1, 0);
 }
 
-static void update_history(int16_t *current, int depth, bool good) {
+static inline void update_history(int16_t *current, int depth, bool good) {
 
     // HistoryDivisor is essentially the max value of history
     const int delta = good ? stat_bonus(depth) : -stat_bonus(depth);
@@ -41,7 +41,7 @@ static void update_history(int16_t *current, int depth, bool good) {
 }
 
 
-static int history_captured_piece(Thread *thread, uint16_t move) {
+static inline int history_captured_piece(Thread *thread, uint16_t move) {
 
     // Handle Enpassant; Consider promotions as Pawn Captures
     return MoveType(move) != NORMAL_MOVE ? PAWN

@@ -40,7 +40,7 @@
 
 const char *PieceLabel[COLOUR_NB] = {"PNBRQK", "pnbrqk"};
 
-static void clearBoard(Board *board) {
+static inline void clearBoard(Board *board) {
 
     // Wipe the entire board structure, and also set all of
     // the pieces on the board to be EMPTY. Ideally, before
@@ -70,7 +70,7 @@ static void setSquare(Board *board, int colour, int piece, int sq) {
         board->pkhash ^= ZobristKeys[board->squares[sq]][sq];
 }
 
-static int stringToSquare(char *str) {
+static inline int stringToSquare(char *str) {
 
     // Helper for reading the enpass square from a FEN. If no square
     // is provided, Ethereal will use -1 to represent this internally
@@ -278,29 +278,6 @@ void printBoard(Board *board) {
     // Print FEN
     boardToFEN(board, fen);
     printf("\n%s\n\n", fen);
-}
-
-int boardHasNonPawnMaterial(Board *board, int turn) {
-    uint64_t friendly = board->colours[turn];
-    uint64_t kings = board->pieces[KING];
-    uint64_t pawns = board->pieces[PAWN];
-    return (friendly & (kings | pawns)) != friendly;
-}
-
-int boardIsDrawn(Board *board, int height) {
-
-    // Drawn if any of the three possible cases
-    return boardDrawnByFiftyMoveRule(board)
-        || boardDrawnByRepetition(board, height)
-        || boardDrawnByInsufficientMaterial(board);
-}
-
-int boardDrawnByFiftyMoveRule(Board *board) {
-
-    // Fifty move rule triggered. BUG: We do not account for the case
-    // when the fifty move rule occurs as checkmate is delivered, which
-    // should not be considered a drawn position, but a checkmated one.
-    return board->halfMoveCounter > 99;
 }
 
 int boardDrawnByRepetition(Board *board, int height) {

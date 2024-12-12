@@ -44,10 +44,30 @@ void squareToString(int sq, char *str);
 void boardFromFEN(Board *board, const char *fen, int chess960);
 void boardToFEN(Board *board, char *fen);
 void printBoard(Board *board);
-int boardHasNonPawnMaterial(Board *board, int turn);
-int boardIsDrawn(Board *board, int height);
-int boardDrawnByFiftyMoveRule(Board *board);
 int boardDrawnByRepetition(Board *board, int height);
 int boardDrawnByInsufficientMaterial(Board *board);
+
+static inline int boardHasNonPawnMaterial(Board *board, int turn) {
+    uint64_t friendly = board->colours[turn];
+    uint64_t kings = board->pieces[KING];
+    uint64_t pawns = board->pieces[PAWN];
+    return (friendly & (kings | pawns)) != friendly;
+}
+
+static inline int boardDrawnByFiftyMoveRule(Board *board) {
+
+    // Fifty move rule triggered. BUG: We do not account for the case
+    // when the fifty move rule occurs as checkmate is delivered, which
+    // should not be considered a drawn position, but a checkmated one.
+    return board->halfMoveCounter > 99;
+}
+
+static inline int boardIsDrawn(Board *board, int height) {
+
+    // Drawn if any of the three possible cases
+    return boardDrawnByFiftyMoveRule(board)
+        || boardDrawnByRepetition(board, height)
+        || boardDrawnByInsufficientMaterial(board);
+}
 
 uint64_t perft(Board *board, int depth);

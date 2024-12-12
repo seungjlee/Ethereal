@@ -37,20 +37,11 @@
 // #include "nnue/accumulator.h"
 // #include "nnue/types.h"
 
-static void updateCastleZobrist(Board *board, uint64_t oldRooks, uint64_t newRooks) {
+static inline void updateCastleZobrist(Board *board, uint64_t oldRooks, uint64_t newRooks) {
     uint64_t diff = oldRooks ^ newRooks;
     while (diff)
         board->hash ^= ZobristCastleKeys[poplsb(&diff)];
 }
-
-int castleKingTo(int king, int rook) {
-    return square(rankOf(king), (rook > king) ? 6 : 2);
-}
-
-int castleRookTo(int king, int rook) {
-    return square(rankOf(king), (rook > king) ? 5 : 3);
-}
-
 
 int apply(Thread *thread, Board *board, uint16_t move) {
 

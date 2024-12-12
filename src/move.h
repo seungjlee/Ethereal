@@ -20,6 +20,7 @@
 
 #include <stdint.h>
 
+#include "bitboards.h"
 #include "types.h"
 
 enum {
@@ -37,8 +38,13 @@ enum {
     QUEEN_PROMO_MOVE  = PROMOTION_MOVE | PROMOTE_TO_QUEEN
 };
 
-int castleKingTo(int king, int rook);
-int castleRookTo(int king, int rook);
+static inline int castleKingTo(int king, int rook) {
+    return square(rankOf(king), (rook > king) ? 6 : 2);
+}
+
+static inline int castleRookTo(int king, int rook) {
+    return square(rankOf(king), (rook > king) ? 5 : 3);
+}
 
 int apply(Thread *thread, Board *board, uint16_t move);
 void applyLegal(Thread *thread, Board *board, uint16_t move);
