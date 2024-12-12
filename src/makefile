@@ -44,7 +44,7 @@ EXE  = Ethereal
 WFLAGS   = -std=gnu11 -Wall -Wextra -Wshadow
 #RFLAGS   = -O3 $(WFLAGS) -DNDEBUG -flto $(NN) $(NNFLAGS) -static
 #CFLAGS   = -O3 $(WFLAGS) -DNDEBUG -flto $(NN) $(NNFLAGS) -march=native
-CFLAGS   = -Og $(WFLAGS) $(NN) $(NNFLAGS) -march=native
+CFLAGS = -Og $(WFLAGS) $(NN) $(NNFLAGS) -march=native
 #TFLAGS   = -O3 $(WFLAGS) -DNDEBUG -flto $(NN) $(NNFLAGS) -march=native -fopenmp -DTUNE
 #PGOFLAGS = -fno-asynchronous-unwind-tables
 
