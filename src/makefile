@@ -48,8 +48,8 @@ CFLAGS = -Og $(WFLAGS) $(NN) $(NNFLAGS) -march=native
 #TFLAGS   = -O3 $(WFLAGS) -DNDEBUG -flto $(NN) $(NNFLAGS) -march=native -fopenmp -DTUNE
 #PGOFLAGS = -fno-asynchronous-unwind-tables
 
-#POPCNTFLAGS = -DUSE_POPCNT -mpopcnt
-#PEXTFLAGS   = -DUSE_PEXT -mbmi2 $(POPCNTFLAGS)
+POPCNTFLAGS = -DUSE_POPCNT -mpopcnt
+PEXTFLAGS   = -DUSE_PEXT -mbmi2 $(POPCNTFLAGS)
 
 SSSE3FLAGS  = -DUSE_SSSE3 -msse -msse2 -msse3 -mssse3
 AVXFLAGS    = -DUSE_AVX -mavx -msse4.1 $(SSSE3FLAGS)
@@ -65,17 +65,17 @@ PROPS = $(shell echo | $(CC) -march=native -E -dM -)
 
 # Detect POPCNT and PEXT Instruction Support
 
-# ifneq ($(findstring __POPCNT__, $(PROPS)),)
-# 	CFLAGS += -DUSE_POPCNT
-# endif
+ifneq ($(findstring __POPCNT__, $(PROPS)),)
+	CFLAGS += $(POPCNTFLAGS)
+endif
 
-# ifneq ($(findstring __BMI2__, $(PROPS)),)
-# 	ifeq ($(findstring __znver1, $(PROPS)),)
-# 		ifeq ($(findstring __znver2, $(PROPS)),)
-# 			CFLAGS += -DUSE_PEXT
-# 		endif
-# 	endif
-# endif
+ifneq ($(findstring __BMI2__, $(PROPS)),)
+	ifeq ($(findstring __znver1, $(PROPS)),)
+		ifeq ($(findstring __znver2, $(PROPS)),)
+			CFLAGS += $(PEXTFLAGS)
+		endif
+	endif
+endif
 
 # Detect AVX2, AVX, or otherwise SSSE3 Instruction Support
 
@@ -84,11 +84,11 @@ ifneq ($(findstring __AVX2__, $(PROPS)),)
 endif
 
 ifneq ($(findstring __AVX__, $(PROPS)),)
-	CFLAGS += -DUSE_AVX
+	CFLAGS += $(AVXFLAGS)
 endif
 
 ifneq ($(findstring __SSSE3__, $(PROPS)),)
-	CFLAGS += -DUSE_SSSE3
+	CFLAGS += $(SSSE3FLAGS)
 endif
 
 # Determine whether we are using GCC or Clang for potential PGO
