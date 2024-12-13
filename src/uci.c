@@ -398,7 +398,6 @@ void uciPosition(char *str, Board *board, int chess960) {
     }
 }
 
-
 void uciReport(Thread *threads, PVariation *pv, int alpha, int beta) {
 #ifdef REPORT_DIAGNOSTICS
     // Gather all of the statistics that the UCI protocol would be
@@ -408,7 +407,9 @@ void uciReport(Thread *threads, PVariation *pv, int alpha, int beta) {
     int hashfull    = tt_hashfull();
     int depth       = threads->depth;
     int seldepth    = threads->seldepth;
+#ifdef ENABLE_MULTI_PV
     int multiPV     = threads->multiPV + 1;
+#endif
     int elapsed     = elapsed_time(threads->tm);
     int bounded     = MAX(alpha, MIN(pv->score, beta));
     uint64_t nodes  = nodesSearchedThreadPool(threads);
@@ -427,9 +428,15 @@ void uciReport(Thread *threads, PVariation *pv, int alpha, int beta) {
     char *bound = bounded >=  beta ? " lowerbound "
                 : bounded <= alpha ? " upperbound " : " ";
 
+#ifdef ENABLE_MULTI_PV
     printf("info depth %d seldepth %d multipv %d score %s %d%stime %d "
            "nodes %"PRIu64" nps %d tbhits %"PRIu64" hashfull %d pv ",
            depth, seldepth, multiPV, type, score, bound, elapsed, nodes, nps, tbhits, hashfull);
+#else
+    printf("info depth %d seldepth %d score %s %d%stime %d "
+           "nodes %"PRIu64" nps %d tbhits %"PRIu64" hashfull %d pv ",
+           depth, seldepth, type, score, bound, elapsed, nodes, nps, tbhits, hashfull);
+#endif
 
     // Iterate over the PV and print each move
     for (int i = 0; i < pv->length; i++) {

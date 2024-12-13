@@ -74,6 +74,7 @@ void moveToString(uint16_t move, char *str, int chess960);
 #define MovePromoPiece(move)   (1 + ((move) >> 14))
 #define MoveMake(from,to,flag) ((from) | ((to) << 6) | (flag))
 
+#ifdef ENABLE_MULTI_PV
 static inline int moveExaminedByMultiPV(Thread *thread, uint16_t move) {
     // Check to see if this move was already selected as the
     // best move in a previous iteration of this search depth
@@ -83,6 +84,7 @@ static inline int moveExaminedByMultiPV(Thread *thread, uint16_t move) {
 
     return 0;
 }
+#endif
 
 static inline int moveIsTactical(Board *board, uint16_t move) {
 
