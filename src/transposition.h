@@ -89,7 +89,6 @@ void tt_store(uint64_t hash, int height, uint16_t move, int value, int eval, int
 
 struct TTClear { int index, count; };
 void tt_clear(int nthreads);
-void *tt_clear_threaded(void *cargo);
 
 /// The Pawn King table contains saved evaluations, and additional Pawn information
 /// that is expensive to compute during evaluation. This includes the location of all

@@ -181,37 +181,8 @@ void tt_store(uint64_t hash, int height, uint16_t move, int value, int eval, int
     replace->hash16     = (uint16_t) hash16;
 }
 
-
-void tt_clear(int nthreads) {
-
-    // Only use 1/4th of the enabled search Threads
-    int nworkers = MAX(1, nthreads / 4);
 #ifdef ENABLE_MULTITHREAD
-    pthread_t pthreads[nworkers];
-#endif
-    struct TTClear ttclears[nworkers];
-
-    // Initalize the data passed via a void* in pthread_create()
-    for (int i = 0; i < nworkers; i++)
-        ttclears[i] = (struct TTClear) { i, nworkers };
-
-#ifdef ENABLE_MULTITHREAD
-    // Launch each of the helper threads to clear their sections
-    for (int i = 1; i < nworkers; i++)
-        pthread_create(&pthreads[i], NULL, tt_clear_threaded, &ttclears[i]);
-#endif
-
-    // Reuse this thread for the 0th sections of the Transposition Table
-    tt_clear_threaded((void*) &ttclears[0]);
-
-#ifdef ENABLE_MULTITHREAD
-    // Join each of the helper threads after they've cleared their sections
-    for (int i = 1; i < nworkers; i++)
-        pthread_join(pthreads[i], NULL);
-#endif
-}
-
-void *tt_clear_threaded(void *cargo) {
+static void *tt_clear_threaded(void *cargo) {
 
     const uint64_t MB = 1ull << 20;
     struct TTClear *ttclear = (struct TTClear*) cargo;
@@ -225,6 +196,39 @@ void *tt_clear_threaded(void *cargo) {
 
     memset(Table.buckets + begin / sizeof(TTBucket), 0, end - begin);
     return NULL;
+}
+#endif
+
+void tt_clear(int nthreads) {
+
+#ifdef ENABLE_MULTITHREAD
+    // Only use 1/4th of the enabled search Threads
+    int nworkers = MAX(1, nthreads / 4);
+    pthread_t pthreads[nworkers];
+
+    struct TTClear ttclears[nworkers];
+
+    // Initalize the data passed via a void* in pthread_create()
+    for (int i = 0; i < nworkers; i++)
+        ttclears[i] = (struct TTClear) { i, nworkers };
+
+    // Launch each of the helper threads to clear their sections
+    for (int i = 1; i < nworkers; i++)
+        pthread_create(&pthreads[i], NULL, tt_clear_threaded, &ttclears[i]);
+
+    // Reuse this thread for the 0th sections of the Transposition Table
+    tt_clear_threaded((void*) &ttclears[0]);
+
+    // Join each of the helper threads after they've cleared their sections
+    for (int i = 1; i < nworkers; i++)
+        pthread_join(pthreads[i], NULL);
+#else
+    (void)(nthreads);
+    int size = Table.hashMask + 1;
+    int bytes = (int)(size * sizeof(TTBucket));
+
+    memset(Table.buckets, 0, bytes);
+#endif
 }
 
 /// Simple Pawn+King Evaluation Hash Table, which also stores some additional
