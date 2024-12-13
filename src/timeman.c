@@ -26,26 +26,6 @@
 
 int MoveOverhead = 300; // Set by UCI options
 
-double get_real_time() {
-#if defined(_WIN32) || defined(_WIN64)
-    return (double)(GetTickCount());
-#else
-    struct timeval tv;
-    double secsInMilli, usecsInMilli;
-
-    gettimeofday(&tv, NULL);
-    secsInMilli = ((double)tv.tv_sec) * 1000;
-    usecsInMilli = tv.tv_usec / 1000;
-
-    return secsInMilli + usecsInMilli;
-#endif
-}
-
-double elapsed_time(const TimeManager *tm) {
-    return get_real_time() - tm->start_time;
-}
-
-
 void tm_init(const Limits *limits, TimeManager *tm) {
 
     tm->pv_stability = 0; // Clear our stability time usage heuristic

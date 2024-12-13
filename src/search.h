@@ -33,12 +33,7 @@ struct PVariation {
 void initSearch();
 void *start_search_threads(void *arguments);
 void getBestMove(Thread *threads, Board *board, Limits *limits, uint16_t *best, uint16_t *ponder, int *score);
-void* iterativeDeepening(void *vthread);
-void aspirationWindow(Thread *thread);
-int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth, bool cutnode);
-int qsearch(Thread *thread, PVariation *pv, int alpha, int beta);
 int staticExchangeEvaluation(Thread *thread, uint16_t move, int threshold);
-int singularity(Thread *thread, uint16_t ttMove, int ttValue, int depth, int PvNode, int alpha, int beta, bool cutnode);
 
 static const int WindowDepth   = 4;
 static const int WindowSize    = 10;

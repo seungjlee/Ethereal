@@ -19,9 +19,27 @@
 #pragma once
 
 #include <stdint.h>
-
 #include "types.h"
 
-int genAllLegalMoves(Board *board, uint16_t *moves);
 int genAllNoisyMoves(Board *board, uint16_t *moves);
 int genAllQuietMoves(Board *board, uint16_t *moves);
+
+static inline int genAllLegalMoves(Board *board, uint16_t *moves) {
+
+    Undo undo[1];
+    int size = 0, pseudo = 0;
+    uint16_t pseudoMoves[MAX_MOVES];
+
+    // Call genAllNoisyMoves() & genAllNoisyMoves()
+    pseudo  = genAllNoisyMoves(board, pseudoMoves);
+    pseudo += genAllQuietMoves(board, pseudoMoves + pseudo);
+
+    // Check each move for legality before copying
+    for (int i = 0; i < pseudo; i++) {
+        applyMove(board, pseudoMoves[i], undo);
+        if (moveWasLegal(board)) moves[size++] = pseudoMoves[i];
+        revertMove(board, pseudoMoves[i], undo);
+    }
+
+    return size;
+}

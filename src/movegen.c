@@ -89,27 +89,6 @@ uint16_t* buildSliderMoves(SliderFunc F, uint16_t *moves, uint64_t pieces, uint6
     return moves;
 }
 
-
-int genAllLegalMoves(Board *board, uint16_t *moves) {
-
-    Undo undo[1];
-    int size = 0, pseudo = 0;
-    uint16_t pseudoMoves[MAX_MOVES];
-
-    // Call genAllNoisyMoves() & genAllNoisyMoves()
-    pseudo  = genAllNoisyMoves(board, pseudoMoves);
-    pseudo += genAllQuietMoves(board, pseudoMoves + pseudo);
-
-    // Check each move for legality before copying
-    for (int i = 0; i < pseudo; i++) {
-        applyMove(board, pseudoMoves[i], undo);
-        if (moveWasLegal(board)) moves[size++] = pseudoMoves[i];
-        revertMove(board, pseudoMoves[i], undo);
-    }
-
-    return size;
-}
-
 int genAllNoisyMoves(Board *board, uint16_t *moves) {
 
     const uint16_t *start = moves;

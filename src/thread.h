@@ -86,7 +86,27 @@ Thread* createThreadPool(int nthreads);
 void deleteThreadPool(Thread *threads);
 
 void resetThreadPool(Thread *threads);
-void newSearchThreadPool(Thread *threads, Board *board, Limits *limits, TimeManager *tm);
 
 uint64_t nodesSearchedThreadPool(Thread *threads);
 uint64_t tbhitsThreadPool(Thread *threads);
+
+static inline void newSearchThreadPool(Thread *threads, Board *board, Limits *limits, TimeManager *tm) {
+    // Initialize each Thread in the Thread Pool. We need a reference
+    // to the UCI seach parameters, access to the timing information,
+    // somewhere to store the results of each iteration by the main, and
+    // our own copy of the board. Also, we reset the seach statistics
+    for (int i = 0; i < threads->nthreads; i++) {
+
+        threads[i].limits = limits;
+        threads[i].tm     = tm;
+        threads[i].height = 0;
+        threads[i].nodes  = 0ull;
+        threads[i].tbhits = 0ull;
+
+        memcpy(&threads[i].board, board, sizeof(Board));
+        threads[i].board.thread = &threads[i];
+
+        memset(threads[i].nodeStates, 0, sizeof(NodeState) * STACK_SIZE);
+        // nnue_reset_evaluator(threads[i].nnue);
+    }
+}

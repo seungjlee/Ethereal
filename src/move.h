@@ -21,6 +21,7 @@
 #include <stdint.h>
 
 #include "bitboards.h"
+#include "thread.h"
 #include "types.h"
 
 enum {
@@ -55,14 +56,8 @@ void applyEnpassMove(Board *board, uint16_t move, Undo *undo);
 void applyPromotionMove(Board *board, uint16_t move, Undo *undo);
 void applyNullMove(Board *board, Undo *undo);
 
-void revert(Thread *thread, Board *board, uint16_t move);
 void revertMove(Board *board, uint16_t move, Undo *undo);
-void revertNullMove(Board *board, Undo *undo);
 
-int legalMoveCount(Board * board);
-int moveExaminedByMultiPV(Thread *thread, uint16_t move);
-int moveIsInRootMoves(Thread *thread, uint16_t move);
-int moveIsTactical(Board *board, uint16_t move);
 int moveEstimatedValue(Board *board, uint16_t move);
 int moveBestCaseValue(Board *board);
 int moveIsLegal(Board *board, uint16_t move);
@@ -78,3 +73,66 @@ void moveToString(uint16_t move, char *str, int chess960);
 #define MovePromoType(move)    ((move) & (3 << 14))
 #define MovePromoPiece(move)   (1 + ((move) >> 14))
 #define MoveMake(from,to,flag) ((from) | ((to) << 6) | (flag))
+
+static inline int moveExaminedByMultiPV(Thread *thread, uint16_t move) {
+    // Check to see if this move was already selected as the
+    // best move in a previous iteration of this search depth
+    for (int i = 0; i < thread->multiPV; i++)
+        if (thread->bestMoves[i] == move)
+            return 1;
+
+    return 0;
+}
+
+static inline int moveIsTactical(Board *board, uint16_t move) {
+
+    // We can use a simple bit trick since we assert that only
+    // the enpass and promotion moves will ever have the 13th bit,
+    // (ie 2 << 12) set. We use (2 << 12) in order to match move.h
+    assert(ENPASS_MOVE & PROMOTION_MOVE & (2 << 12));
+    assert(!((NORMAL_MOVE | CASTLE_MOVE) & (2 << 12)));
+
+    // Check for captures, promotions, or enpassant. Castle moves may appear to be
+    // tactical, since the King may move to its own square, or the rooks square
+    return (board->squares[MoveTo(move)] != EMPTY && MoveType(move) != CASTLE_MOVE)
+        || (move & ENPASS_MOVE & PROMOTION_MOVE);
+}
+
+static inline void revertNullMove(Board *board, Undo *undo) {
+    // Revert information which is hard to recompute
+    board->hash            = undo->hash;
+    board->threats         = undo->threats;
+    board->epSquare        = undo->epSquare;
+    board->halfMoveCounter = undo->halfMoveCounter;
+
+    // NULL moves simply swap the turn only
+    board->turn = !board->turn;
+    board->numMoves--;
+    board->fullMoveCounter--;
+}
+
+static inline void revert(Thread *thread, Board *board, uint16_t move) {
+    if (move == NULL_MOVE)
+        revertNullMove(board, &thread->undoStack[--thread->height]);
+    else
+        revertMove(board, move, &thread->undoStack[--thread->height]);
+}
+
+static inline int moveIsInRootMoves(Thread *thread, uint16_t move) {
+    // We do two things: 1) Check to make sure we are not using a move which
+    // has been flagged as excluded thanks to Syzygy probing. 2) Check to see
+    // if we are doing a "go searchmoves <>"  command, in which case we have
+    // to limit our search to the provided moves.
+    for (int i = 0; i < MAX_MOVES; i++)
+        if (move == thread->limits->excludedMoves[i])
+            return 0;
+
+    if (!thread->limits->limitedByMoves)
+        return 1;
+
+    for (int i = 0; i < MAX_MOVES; i++)
+        if (move == thread->limits->searchMoves[i])
+            return 1;
+
+    return 0;
+}

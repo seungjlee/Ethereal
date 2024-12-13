@@ -39,11 +39,29 @@ struct TimeManager {
 #endif
 };
 
-double get_real_time();
-double elapsed_time(const TimeManager *tm);
+static inline double get_real_time() {
+#if defined(_WIN32) || defined(_WIN64)
+    return (double)(GetTickCount());
+#else
+    struct timeval tv;
+    double secsInMilli, usecsInMilli;
+
+    gettimeofday(&tv, NULL);
+    secsInMilli = ((double)tv.tv_sec) * 1000;
+    usecsInMilli = tv.tv_usec / 1000;
+
+    return secsInMilli + usecsInMilli;
+#endif
+}
+
+static inline double elapsed_time(const TimeManager *tm) {
+    return get_real_time() - tm->start_time;
+}
+
 void tm_init(const Limits *limits, TimeManager *tm);
+bool tm_stop_early(const Thread *thread);
+
 #ifdef LIMITED_BY_SELF
 void tm_update(const Thread *thread, const Limits *limits, TimeManager *tm);
 bool tm_finished(const Thread *thread, const TimeManager *tm);
 #endif
-bool tm_stop_early(const Thread *thread);

@@ -199,175 +199,127 @@ void *start_search_threads(void *arguments) {
     return NULL;
 }
 
-void getBestMove(Thread *threads, Board *board, Limits *limits, uint16_t *best, uint16_t *ponder, int *score) {
+static int qsearch(Thread *thread, PVariation *pv, int alpha, int beta) {
+
+    Board *const board  = &thread->board;
+    NodeState *const ns = &thread->states[thread->height];
+
+    int eval, value, best, oldAlpha = alpha;
+    int ttHit, ttValue = 0, ttEval = VALUE_NONE, ttDepth = 0, ttBound = 0;
+    uint16_t move, ttMove = NONE_MOVE, bestMove = NONE_MOVE;
+    PVariation lpv;
+
+    // Ensure a fresh PV
+    pv->length = 0;
+
+    // Updates for UCI reporting
+    thread->seldepth = MAX(thread->seldepth, thread->height);
+    thread->nodes++;
 
 #ifdef ENABLE_MULTITHREAD
-    pthread_t pthreads[threads->nthreads];
-#endif
-    TimeManager tm = {0}; tm_init(limits, &tm);
-
-    // Minor house keeping for starting a search
-    tt_update(); // Table has an age component
-#ifdef ENABLE_MULTITHREAD
-    ABORT_SIGNAL = 0; // Otherwise Threads will exit
-#endif
-    newSearchThreadPool(threads, board, limits, &tm);
-
-    // Allow Syzygy to refine the move list for optimal results
-    if (!limits->limitedByMoves && limits->multiPV == 1)
-        tablebasesProbeDTZ(board, limits);
-
-#ifdef ENABLE_MULTITHREAD
-    // Create a new thread for each of the helpers and reuse the current
-    // thread for the main thread, which avoids some overhead and saves
-    // us from having the current thread eating CPU time while waiting
-    for (int i = 1; i < threads->nthreads; i++)
-        pthread_create(&pthreads[i], NULL, &iterativeDeepening, &threads[i]);
-#endif
-    iterativeDeepening((void*) &threads[0]);
-
-#ifdef ENABLE_MULTITHREAD
-    // When the main thread exits it should signal for the helpers to
-    // shutdown. Wait until all helpers have finished before moving on
-    ABORT_SIGNAL = 1;
-    for (int i = 1; i < threads->nthreads; i++)
-        pthread_join(pthreads[i], NULL);
+    // Step 1. Abort Check. Exit the search if signaled by main thread or the
+    // UCI thread, or if the search time has expired outside pondering mode
+    if (   (ABORT_SIGNAL && thread->depth > 1)
+        || (tm_stop_early(thread) && !IS_PONDERING))
+        longjmp(thread->jbuffer, 1);
 #endif
 
-    // Pick the best of our completed threads
-    select_from_threads(threads, best, ponder, score);
+    // Step 2. Draw Detection. Check for the fifty move rule, repetition, or insufficient
+    // material. Add variance to the draw score, to avoid blindness to 3-fold lines
+    if (boardIsDrawn(board, thread->height)) return 1 - (thread->nodes & 2);
 
-#ifdef REPORT_DIAGNOSTICS
-    printf("Search time: %.0f msecs.\n", elapsed_time(&tm));
-#endif
-}
+    // Step 3. Max Draft Cutoff. If we are at the maximum search draft,
+    // then end the search here with a static eval of the current board
+    if (thread->height >= MAX_PLY)
+        return evaluateBoard(thread, board);
 
-void* iterativeDeepening(void *vthread) {
+    // Step 4. Probe the Transposition Table, adjust the value, and consider cutoffs
+    if ((ttHit = tt_probe(board->hash, thread->height, &ttMove, &ttValue, &ttEval, &ttDepth, &ttBound))) {
 
-    Thread *const thread  = (Thread*) vthread;
-    TimeManager *const tm = thread->tm;
-    Limits *const limits  = thread->limits;
-
-#ifdef ENABLE_MULTITHREAD
-    // Bind when we expect to deal with NUMA
-    if (thread->nthreads > 8)
-        bindThisThread(thread->index);
-#endif
-
-    // Perform iterative deepening until exit conditions
-    for (thread->depth = 1; thread->depth < MAX_PLY; thread->depth++) {
-
-#ifdef ENABLE_MULTITHREAD
-        // If we abort to here, we stop searching
-        #if defined(_WIN32) || defined(_WIN64)
-        if (_setjmp(thread->jbuffer, NULL)) break;
-        #else
-        if (setjmp(thread->jbuffer)) break;
-        #endif
-#endif
-
-        // Perform a search for the current depth for each requested line of play
-        for (thread->multiPV = 0; thread->multiPV < limits->multiPV; thread->multiPV++)
-            aspirationWindow(thread);
-
-#ifdef ENABLE_MULTITHREAD
-        const int mainThread  = thread->index == 0;
-        // Helper threads need not worry about time and search info updates
-        if (!mainThread) continue;
-#endif
-
-        // We delay reporting during MultiPV searches
-        if (limits->multiPV > 1)
-            report_multipv_lines(thread);
-
-#ifdef LIMITED_BY_SELF
-        // Update clock based on score and pv changes
-        tm_update(thread, limits, tm);
-#endif
-
-#ifdef ENABLE_MULTITHREAD
-        // Don't want to exit while pondering
-        if (IS_PONDERING) continue;
-#endif
-
-        // Check for termination by any of the possible limits
-#ifdef LIMITED_BY_SELF
-        if (   (limits->limitedBySelf  && tm_finished(thread, tm)) ||
-#else
-        if (
-#endif
-            (limits->limitedByDepth && thread->depth >= limits->depthLimit) ||
-            (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
-            break;
+        // Table is exact or produces a cutoff
+        if (    ttBound == BOUND_EXACT
+            || (ttBound == BOUND_LOWER && ttValue >= beta)
+            || (ttBound == BOUND_UPPER && ttValue <= alpha))
+            return ttValue;
     }
 
-    return NULL;
-}
+    // Save a history of the static evaluations
+    eval = ns->eval = ttEval != VALUE_NONE
+                    ? ttEval : evaluateBoard(thread, board);
 
-void aspirationWindow(Thread *thread) {
+    // Toss the static evaluation into the TT if we won't overwrite something
+    if (!ttHit && !board->kingAttackers)
+        tt_store(board->hash, thread->height, NONE_MOVE, VALUE_NONE, eval, 0, BOUND_NONE);
 
-    TimeManager *const tm = thread->tm;
-    Limits *const limits  = thread->limits;
-    PVariation pv;
-    int depth  = thread->depth;
-    int alpha  = -MATE, beta = MATE, delta = WindowSize;
-#ifdef REPORT_DIAGNOSTICS
-    int report = !thread->index && thread->limits->multiPV == 1;
-#endif
+    // Step 5. Eval Pruning. If a static evaluation of the board will
+    // exceed beta, then we can stop the search here. Also, if the static
+    // eval exceeds alpha, we can call our static eval the new alpha
+    best = eval;
+    alpha = MAX(alpha, eval);
+    if (alpha >= beta) return eval;
 
-    // After a few depths use a previous result to form the window
-    if (thread->depth >= WindowDepth) {
-        alpha = MAX(-MATE, thread->pvs[thread->completed].score - delta);
-        beta  = MIN( MATE, thread->pvs[thread->completed].score + delta);
+    // Step 6. Delta Pruning. Even the best possible capture and or promotion
+    // combo, with a minor boost for pawn captures, would still fail to cover
+    // the distance between alpha and the evaluation. Playing a move is futile.
+    if (MAX(QSDeltaMargin, moveBestCaseValue(board)) < alpha - eval)
+        return eval;
+
+    // Step 7. Move Generation and Looping. Generate all tactical moves
+    // and return those which are winning via SEE, and also strong enough
+    // to beat the margin computed in the Delta Pruning step found above
+    init_noisy_picker(&ns->mp, thread, NONE_MOVE, MAX(1, alpha - eval - QSSeeMargin));
+    while ((move = select_next(&ns->mp, thread, 1)) != NONE_MOVE) {
+
+        // Worst case which assumes we lose our piece immediately
+        int pessimism = moveEstimatedValue(board, move)
+                      - SEEPieceValues[pieceType(board->squares[MoveFrom(move)])];
+
+        // Search the next ply if the move is legal
+        if (!apply(thread, board, move)) continue;
+
+        // Short-circuit QS and assume a stand-pat matches the SEE
+        if (eval + pessimism > beta && abs(eval + pessimism) < MATE / 2) {
+            revert(thread, board, move);
+            pv->length = 1;
+            pv->line[0] = move;
+            return beta;
+        }
+
+        value = -qsearch(thread, &lpv, -beta, -alpha);
+        revert(thread, board, move);
+
+        // Improved current value
+        if (value > best) {
+
+            best = value;
+            bestMove = move;
+
+            // Improved current lower bound
+            if (value > alpha) {
+                alpha = value;
+
+                // Update the Principle Variation
+                pv->length = 1 + lpv.length;
+                pv->line[0] = move;
+                memcpy(pv->line + 1, lpv.line, sizeof(uint16_t) * lpv.length);
+            }
+
+            // Search has failed high
+            if (alpha >= beta)
+                break;
+        }
     }
 
-    while (1) {
+    // Step 8. Store results of search into the Transposition Table.
+    ttBound = best >= beta    ? BOUND_LOWER
+            : best > oldAlpha ? BOUND_EXACT : BOUND_UPPER;
+    tt_store(board->hash, thread->height, bestMove, best, eval, 0, ttBound);
 
-        // Perform a search and consider reporting results
-        pv.score = search(thread, &pv, alpha, beta, MAX(1, depth), FALSE);
-#ifdef REPORT_DIAGNOSTICS
-        if (   (report && pv.score > alpha && pv.score < beta)
-            || (report && elapsed_time(thread->tm) >= WindowTimerMS))
-            uciReport(thread->threads, &pv, alpha, beta);
-#endif
-
-        // Search returned a result within our window
-        if (pv.score > alpha && pv.score < beta) {
-            thread->bestMoves[thread->multiPV] = pv.line[0];
-            update_best_line(thread, &pv);
-            return;
-        }
-
-        // Search failed low, adjust window and reset depth
-        if (pv.score <= alpha) {
-            beta  = (alpha + beta) / 2;
-            alpha = MAX(-MATE, alpha - delta);
-            depth = thread->depth;
-            revert_best_line(thread);
-        }
-
-        // Search failed high, adjust window and reduce depth
-        else if (pv.score >= beta) {
-            beta = MIN(MATE, beta + delta);
-            depth = depth - (abs(pv.score) <= MATE / 2);
-            update_best_line(thread, &pv);
-        }
-
-#ifdef LIMITED_BY_SELF
-        if (   (limits->limitedBySelf  && tm_finished(thread, tm)) ||
-#else
-        if (
-#endif
-            (limits->limitedByDepth && thread->depth >= limits->depthLimit) ||
-            (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
-            break;
-
-        // Expand the search window
-        delta = delta + delta / 2;
-    }
+    return best;
 }
 
-int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth, bool cutnode) {
+static int singularity(Thread *thread, uint16_t ttMove, int ttValue, int depth, int PvNode, int alpha, int beta, bool cutnode);
+static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth, bool cutnode) {
 
     TimeManager *const tm = thread->tm;
     Limits *const limits  = thread->limits;
@@ -886,123 +838,172 @@ int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth, bool 
     return best;
 }
 
-int qsearch(Thread *thread, PVariation *pv, int alpha, int beta) {
+static void aspirationWindow(Thread *thread) {
 
-    Board *const board  = &thread->board;
-    NodeState *const ns = &thread->states[thread->height];
-
-    int eval, value, best, oldAlpha = alpha;
-    int ttHit, ttValue = 0, ttEval = VALUE_NONE, ttDepth = 0, ttBound = 0;
-    uint16_t move, ttMove = NONE_MOVE, bestMove = NONE_MOVE;
-    PVariation lpv;
-
-    // Ensure a fresh PV
-    pv->length = 0;
-
-    // Updates for UCI reporting
-    thread->seldepth = MAX(thread->seldepth, thread->height);
-    thread->nodes++;
-
-#ifdef ENABLE_MULTITHREAD
-    // Step 1. Abort Check. Exit the search if signaled by main thread or the
-    // UCI thread, or if the search time has expired outside pondering mode
-    if (   (ABORT_SIGNAL && thread->depth > 1)
-        || (tm_stop_early(thread) && !IS_PONDERING))
-        longjmp(thread->jbuffer, 1);
+    TimeManager *const tm = thread->tm;
+    Limits *const limits  = thread->limits;
+    PVariation pv;
+    int depth  = thread->depth;
+    int alpha  = -MATE, beta = MATE, delta = WindowSize;
+#ifdef REPORT_DIAGNOSTICS
+    int report = !thread->index && thread->limits->multiPV == 1;
 #endif
 
-    // Step 2. Draw Detection. Check for the fifty move rule, repetition, or insufficient
-    // material. Add variance to the draw score, to avoid blindness to 3-fold lines
-    if (boardIsDrawn(board, thread->height)) return 1 - (thread->nodes & 2);
-
-    // Step 3. Max Draft Cutoff. If we are at the maximum search draft,
-    // then end the search here with a static eval of the current board
-    if (thread->height >= MAX_PLY)
-        return evaluateBoard(thread, board);
-
-    // Step 4. Probe the Transposition Table, adjust the value, and consider cutoffs
-    if ((ttHit = tt_probe(board->hash, thread->height, &ttMove, &ttValue, &ttEval, &ttDepth, &ttBound))) {
-
-        // Table is exact or produces a cutoff
-        if (    ttBound == BOUND_EXACT
-            || (ttBound == BOUND_LOWER && ttValue >= beta)
-            || (ttBound == BOUND_UPPER && ttValue <= alpha))
-            return ttValue;
+    // After a few depths use a previous result to form the window
+    if (thread->depth >= WindowDepth) {
+        alpha = MAX(-MATE, thread->pvs[thread->completed].score - delta);
+        beta  = MIN( MATE, thread->pvs[thread->completed].score + delta);
     }
 
-    // Save a history of the static evaluations
-    eval = ns->eval = ttEval != VALUE_NONE
-                    ? ttEval : evaluateBoard(thread, board);
+    while (1) {
 
-    // Toss the static evaluation into the TT if we won't overwrite something
-    if (!ttHit && !board->kingAttackers)
-        tt_store(board->hash, thread->height, NONE_MOVE, VALUE_NONE, eval, 0, BOUND_NONE);
+        // Perform a search and consider reporting results
+        pv.score = search(thread, &pv, alpha, beta, MAX(1, depth), FALSE);
+#ifdef REPORT_DIAGNOSTICS
+        if (   (report && pv.score > alpha && pv.score < beta)
+            || (report && elapsed_time(thread->tm) >= WindowTimerMS))
+            uciReport(thread->threads, &pv, alpha, beta);
+#endif
 
-    // Step 5. Eval Pruning. If a static evaluation of the board will
-    // exceed beta, then we can stop the search here. Also, if the static
-    // eval exceeds alpha, we can call our static eval the new alpha
-    best = eval;
-    alpha = MAX(alpha, eval);
-    if (alpha >= beta) return eval;
-
-    // Step 6. Delta Pruning. Even the best possible capture and or promotion
-    // combo, with a minor boost for pawn captures, would still fail to cover
-    // the distance between alpha and the evaluation. Playing a move is futile.
-    if (MAX(QSDeltaMargin, moveBestCaseValue(board)) < alpha - eval)
-        return eval;
-
-    // Step 7. Move Generation and Looping. Generate all tactical moves
-    // and return those which are winning via SEE, and also strong enough
-    // to beat the margin computed in the Delta Pruning step found above
-    init_noisy_picker(&ns->mp, thread, NONE_MOVE, MAX(1, alpha - eval - QSSeeMargin));
-    while ((move = select_next(&ns->mp, thread, 1)) != NONE_MOVE) {
-
-        // Worst case which assumes we lose our piece immediately
-        int pessimism = moveEstimatedValue(board, move)
-                      - SEEPieceValues[pieceType(board->squares[MoveFrom(move)])];
-
-        // Search the next ply if the move is legal
-        if (!apply(thread, board, move)) continue;
-
-        // Short-circuit QS and assume a stand-pat matches the SEE
-        if (eval + pessimism > beta && abs(eval + pessimism) < MATE / 2) {
-            revert(thread, board, move);
-            pv->length = 1;
-            pv->line[0] = move;
-            return beta;
+        // Search returned a result within our window
+        if (pv.score > alpha && pv.score < beta) {
+            thread->bestMoves[thread->multiPV] = pv.line[0];
+            update_best_line(thread, &pv);
+            return;
         }
 
-        value = -qsearch(thread, &lpv, -beta, -alpha);
-        revert(thread, board, move);
-
-        // Improved current value
-        if (value > best) {
-
-            best = value;
-            bestMove = move;
-
-            // Improved current lower bound
-            if (value > alpha) {
-                alpha = value;
-
-                // Update the Principle Variation
-                pv->length = 1 + lpv.length;
-                pv->line[0] = move;
-                memcpy(pv->line + 1, lpv.line, sizeof(uint16_t) * lpv.length);
-            }
-
-            // Search has failed high
-            if (alpha >= beta)
-                break;
+        // Search failed low, adjust window and reset depth
+        if (pv.score <= alpha) {
+            beta  = (alpha + beta) / 2;
+            alpha = MAX(-MATE, alpha - delta);
+            depth = thread->depth;
+            revert_best_line(thread);
         }
+
+        // Search failed high, adjust window and reduce depth
+        else if (pv.score >= beta) {
+            beta = MIN(MATE, beta + delta);
+            depth = depth - (abs(pv.score) <= MATE / 2);
+            update_best_line(thread, &pv);
+        }
+
+#ifdef LIMITED_BY_SELF
+        if (   (limits->limitedBySelf  && tm_finished(thread, tm)) ||
+#else
+        if (
+#endif
+            (limits->limitedByDepth && thread->depth >= limits->depthLimit) ||
+            (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
+            break;
+
+        // Expand the search window
+        delta = delta + delta / 2;
+    }
+}
+
+static void* iterativeDeepening(void *vthread) {
+
+    Thread *const thread  = (Thread*) vthread;
+    TimeManager *const tm = thread->tm;
+    Limits *const limits  = thread->limits;
+
+#ifdef ENABLE_MULTITHREAD
+    // Bind when we expect to deal with NUMA
+    if (thread->nthreads > 8)
+        bindThisThread(thread->index);
+#endif
+
+    // Perform iterative deepening until exit conditions
+    for (thread->depth = 1; thread->depth < MAX_PLY; thread->depth++) {
+
+#ifdef ENABLE_MULTITHREAD
+        // If we abort to here, we stop searching
+        #if defined(_WIN32) || defined(_WIN64)
+        if (_setjmp(thread->jbuffer, NULL)) break;
+        #else
+        if (setjmp(thread->jbuffer)) break;
+        #endif
+#endif
+
+        // Perform a search for the current depth for each requested line of play
+        for (thread->multiPV = 0; thread->multiPV < limits->multiPV; thread->multiPV++)
+            aspirationWindow(thread);
+
+#ifdef ENABLE_MULTITHREAD
+        const int mainThread  = thread->index == 0;
+        // Helper threads need not worry about time and search info updates
+        if (!mainThread) continue;
+#endif
+
+        // We delay reporting during MultiPV searches
+        if (limits->multiPV > 1)
+            report_multipv_lines(thread);
+
+#ifdef LIMITED_BY_SELF
+        // Update clock based on score and pv changes
+        tm_update(thread, limits, tm);
+#endif
+
+#ifdef ENABLE_MULTITHREAD
+        // Don't want to exit while pondering
+        if (IS_PONDERING) continue;
+#endif
+
+        // Check for termination by any of the possible limits
+#ifdef LIMITED_BY_SELF
+        if (   (limits->limitedBySelf  && tm_finished(thread, tm)) ||
+#else
+        if (
+#endif
+            (limits->limitedByDepth && thread->depth >= limits->depthLimit) ||
+            (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
+            break;
     }
 
-    // Step 8. Store results of search into the Transposition Table.
-    ttBound = best >= beta    ? BOUND_LOWER
-            : best > oldAlpha ? BOUND_EXACT : BOUND_UPPER;
-    tt_store(board->hash, thread->height, bestMove, best, eval, 0, ttBound);
+    return NULL;
+}
 
-    return best;
+void getBestMove(Thread *threads, Board *board, Limits *limits, uint16_t *best, uint16_t *ponder, int *score) {
+
+#ifdef ENABLE_MULTITHREAD
+    pthread_t pthreads[threads->nthreads];
+#endif
+    TimeManager tm = {0}; tm_init(limits, &tm);
+
+    // Minor house keeping for starting a search
+    tt_update(); // Table has an age component
+#ifdef ENABLE_MULTITHREAD
+    ABORT_SIGNAL = 0; // Otherwise Threads will exit
+#endif
+    newSearchThreadPool(threads, board, limits, &tm);
+
+    // Allow Syzygy to refine the move list for optimal results
+    if (!limits->limitedByMoves && limits->multiPV == 1)
+        tablebasesProbeDTZ(board, limits);
+
+#ifdef ENABLE_MULTITHREAD
+    // Create a new thread for each of the helpers and reuse the current
+    // thread for the main thread, which avoids some overhead and saves
+    // us from having the current thread eating CPU time while waiting
+    for (int i = 1; i < threads->nthreads; i++)
+        pthread_create(&pthreads[i], NULL, &iterativeDeepening, &threads[i]);
+#endif
+    iterativeDeepening((void*) &threads[0]);
+
+#ifdef ENABLE_MULTITHREAD
+    // When the main thread exits it should signal for the helpers to
+    // shutdown. Wait until all helpers have finished before moving on
+    ABORT_SIGNAL = 1;
+    for (int i = 1; i < threads->nthreads; i++)
+        pthread_join(pthreads[i], NULL);
+#endif
+
+    // Pick the best of our completed threads
+    select_from_threads(threads, best, ponder, score);
+
+#ifdef REPORT_DIAGNOSTICS
+    printf("Search time: %.0f msecs.\n", elapsed_time(&tm));
+#endif
 }
 
 int staticExchangeEvaluation(Thread *thread, uint16_t move, int threshold) {
@@ -1098,7 +1099,7 @@ int staticExchangeEvaluation(Thread *thread, uint16_t move, int threshold) {
     return board->turn != colour;
 }
 
-int singularity(Thread *thread, uint16_t ttMove, int ttValue, int depth, int PvNode, int alpha, int beta, bool cutnode) {
+static int singularity(Thread *thread, uint16_t ttMove, int ttValue, int depth, int PvNode, int alpha, int beta, bool cutnode) {
 
     Board *const board  = &thread->board;
     NodeState *const ns = &thread->states[thread->height-1];

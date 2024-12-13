@@ -95,6 +95,17 @@ typedef struct TTable TTable;
 typedef struct Limits Limits;
 typedef struct UCIGoStruct UCIGoStruct;
 
+struct Limits {
+    double start, time, inc, mtg, timeLimit;
+    int limitedByNone, limitedByTime;
+#ifdef LIMITED_BY_SELF
+    int limitedBySelf;
+#endif
+    int limitedByDepth, limitedByMoves, limitedByNodes;
+    int multiPV, depthLimit; uint64_t nodeLimit;
+    uint16_t searchMoves[MAX_MOVES], excludedMoves[MAX_MOVES];
+};
+
 // Renamings, currently for move ordering
 
 typedef uint16_t KillerTable[MAX_PLY+1][2];
