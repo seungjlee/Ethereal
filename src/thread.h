@@ -55,11 +55,11 @@ struct Thread {
     Board board;
     Limits *limits;
     TimeManager *tm;
-    PVariation pvs[MAX_PLY*2];
-    PVariation mpvs[MAX_MOVES*2];
+    PVariation pvs[MAX_PLY];
+    PVariation mpvs[MAX_MOVES];
 
     int multiPV;
-    uint16_t bestMoves[MAX_MOVES*2];
+    uint16_t bestMoves[MAX_MOVES];
 
     uint64_t nodes, tbhits;
     int depth, seldepth, height, completed;

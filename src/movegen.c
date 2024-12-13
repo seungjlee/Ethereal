@@ -104,6 +104,7 @@ int genAllNoisyMoves(Board *board, uint16_t *moves) {
     uint64_t them     = board->colours[!board->turn];
     uint64_t occupied = us | them;
 
+    // TODO: AVX first four.
     uint64_t pawns   = us & (board->pieces[PAWN  ]);
     uint64_t knights = us & (board->pieces[KNIGHT]);
     uint64_t bishops = us & (board->pieces[BISHOP]);
@@ -123,11 +124,16 @@ int genAllNoisyMoves(Board *board, uint16_t *moves) {
 
     // Compute bitboards for each type of Pawn movement
     pawnEnpass       = pawnEnpassCaptures(pawns, board->epSquare, board->turn);
+
+    // TODO: AVX or SSE
     pawnLeft         = pawnLeftAttacks(pawns, them, board->turn);
     pawnRight        = pawnRightAttacks(pawns, them, board->turn);
+    pawnPromoLeft    = pawnLeft & PROMOTION_RANKS;
+    pawnPromoRight   = pawnRight & PROMOTION_RANKS;
+    pawnLeft  &= ~PROMOTION_RANKS;
+    pawnRight &= ~PROMOTION_RANKS;
+
     pawnPromoForward = pawnAdvance(pawns, occupied, board->turn) & PROMOTION_RANKS;
-    pawnPromoLeft    = pawnLeft & PROMOTION_RANKS; pawnLeft &= ~PROMOTION_RANKS;
-    pawnPromoRight   = pawnRight & PROMOTION_RANKS; pawnRight &= ~PROMOTION_RANKS;
 
     // Generate moves for all the Pawns, so long as they are noisy
     moves = buildEnpassMoves(moves, pawnEnpass, board->epSquare);

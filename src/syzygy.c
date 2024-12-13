@@ -58,6 +58,10 @@ static void removeBadWDL(Board *board, Limits *limits, unsigned result, unsigned
 void tablebasesProbeDTZ(Board *board, Limits *limits) {
 
     unsigned results[MAX_MOVES];
+
+    // Was this missing initialization a bug?
+    memset(results, 0xFF, sizeof(results));
+
     uint64_t white = board->colours[WHITE];
     uint64_t black = board->colours[BLACK];
 

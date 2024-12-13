@@ -22,6 +22,8 @@
 #include <stdint.h>
 #include <stdalign.h>
 
+#include "pyrrhic/constants.h"
+
 enum { FALSE, TRUE };
 
 enum { MG, EG };
@@ -30,7 +32,7 @@ enum { WHITE, BLACK };
 
 enum { PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING };
 
-enum { MAX_PLY = 192, MAX_MOVES = 192 };
+enum { MAX_PLY = TB_MAX_PLY, MAX_MOVES = TB_MAX_MOVES };
 
 enum {
     WHITE_PAWN   =  0, BLACK_PAWN   =  1,

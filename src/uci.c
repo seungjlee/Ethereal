@@ -78,9 +78,9 @@ static void uciGo(UCIGoStruct *ucigo, Thread *threads, Board *board, int multiPV
     char moveStr[6];
     char *ptr = strtok(str, " ");
 
-    uint16_t moves[MAX_MOVES*2];
+    uint16_t moves[MAX_MOVES];
     int size = genAllLegalMoves(board, moves), idx = 0;
-    assert(size <= MAX_MOVES*2);
+    assert((size_t)size <= sizeof(moves)/sizeof(moves[0]));
 
     Limits *limits = &ucigo->limits;
     memset(limits, 0, sizeof(Limits));
@@ -377,6 +377,7 @@ void uciPosition(char *str, Board *board, int chess960) {
 
         // Generate moves for this position
         size = genAllLegalMoves(board, moves);
+        assert((size_t)size <= sizeof(moves)/sizeof(moves[0]));
 
         // Find and apply the given move
         for (int i = 0; i < size; i++) {

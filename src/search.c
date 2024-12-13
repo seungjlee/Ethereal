@@ -662,8 +662,14 @@ static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth
             continue;
 
         played += 1;
-        if (isQuiet) quietsTried[quietsPlayed++] = move;
-        else capturesTried[capturesPlayed++] = move;
+        if (isQuiet) {
+            assert((size_t)quietsPlayed + 1 < sizeof(quietsTried)/sizeof(quietsTried[0]));
+            quietsTried[quietsPlayed++] = move;
+        }
+        else {
+            assert((size_t)capturesPlayed + 1 < sizeof(capturesTried)/sizeof(capturesTried[0]));
+            capturesTried[capturesPlayed++] = move;
+        }
 
 #ifdef REPORT_DIAGNOSTICS_CURRENT_MOVE
         // The UCI spec allows us to output information about the current move
