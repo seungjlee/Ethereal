@@ -58,9 +58,7 @@ struct Thread {
     PVariation pvs[MAX_PLY*2];
     PVariation mpvs[MAX_MOVES*2];
 
-#ifdef ENABLE_MULTI_PV
     int multiPV;
-#endif
     uint16_t bestMoves[MAX_MOVES*2];
 
     uint64_t nodes, tbhits;
