@@ -102,7 +102,11 @@ struct Limits {
     int limitedBySelf;
 #endif
     int limitedByDepth, limitedByMoves, limitedByNodes;
-    int multiPV, depthLimit; uint64_t nodeLimit;
+#ifdef ENABLE_MULTI_PV
+    int multiPV;
+#endif
+    int depthLimit;
+    uint64_t nodeLimit;
     uint16_t searchMoves[MAX_MOVES], excludedMoves[MAX_MOVES];
 };
 

@@ -69,7 +69,9 @@ static void runBenchmark(int argc, char **argv) {
     threads = createThreadPool(nthreads);
 
     // Initialize a "go depth <x>" search
+#ifdef ENABLE_MULTI_PV
     limits.multiPV        = 1;
+#endif
     limits.limitedByDepth = 1;
     limits.depthLimit     = depth;
 
@@ -127,7 +129,9 @@ static void runEvalBook(int argc, char **argv) {
 
     Thread *threads = createThreadPool(nthreads);
 
+#ifdef ENABLE_MULTI_PV
     limits.multiPV = 1;
+#endif
     limits.limitedByDepth = 1;
     limits.depthLimit = depth;
     tt_init(nthreads, megabytes);

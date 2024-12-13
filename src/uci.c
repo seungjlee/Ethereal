@@ -63,6 +63,9 @@ static void uciGo(UCIGoStruct *ucigo, Thread *threads, Board *board, int multiPV
                   int hard_time_limit_msecs)
 #endif
 {
+#ifndef ENABLE_MULTI_PV
+    (void)(multiPV);
+#endif
 
     /// Parse the entire "go" command in order to fill out a Limits struct, found at ucigo->limits.
     /// After we have processed all of this, we can execute a new search thread, held by *pthread,
@@ -75,8 +78,9 @@ static void uciGo(UCIGoStruct *ucigo, Thread *threads, Board *board, int multiPV
     char moveStr[6];
     char *ptr = strtok(str, " ");
 
-    uint16_t moves[MAX_MOVES];
+    uint16_t moves[MAX_MOVES*2];
     int size = genAllLegalMoves(board, moves), idx = 0;
+    assert(size <= MAX_MOVES*2);
 
     Limits *limits = &ucigo->limits;
     memset(limits, 0, sizeof(Limits));
@@ -134,8 +138,10 @@ static void uciGo(UCIGoStruct *ucigo, Thread *threads, Board *board, int multiPV
     limits->inc   = (board->turn == WHITE) ?  winc :  binc;
     limits->mtg   = (board->turn == WHITE) ?   mtg :   mtg;
 
+#ifdef ENABLE_MULTI_PV
     // Cap our MultiPV search based on the suggested or legal moves
     limits->multiPV = MIN(multiPV, limits->limitedByMoves ? idx : size);
+#endif
 
     // Prepare the uciGoStruct for the new pthread
     ucigo->board   = board;

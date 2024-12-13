@@ -126,6 +126,7 @@ static void revert_best_line(Thread *thread) {
         thread->completed = thread->depth - 1;
 }
 
+#ifdef ENABLE_MULTI_PV
 static void report_multipv_lines(Thread *thread) {
 
     /// We've just finished a depth during a MultiPV search. Now we will
@@ -149,7 +150,7 @@ static void report_multipv_lines(Thread *thread) {
     for (thread->multiPV = 0; thread->multiPV < thread->limits->multiPV; thread->multiPV++)
         uciReport(thread->threads, &thread->mpvs[thread->multiPV], -MATE, MATE);
 }
-
+#endif
 
 void initSearch() {
 
@@ -846,7 +847,11 @@ static void aspirationWindow(Thread *thread) {
     int depth  = thread->depth;
     int alpha  = -MATE, beta = MATE, delta = WindowSize;
 #ifdef REPORT_DIAGNOSTICS
+#ifdef ENABLE_MULTI_PV
     int report = !thread->index && thread->limits->multiPV == 1;
+#else
+    const int report = !thread->index;
+#endif
 #endif
 
     // After a few depths use a previous result to form the window
@@ -925,9 +930,15 @@ static void* iterativeDeepening(void *vthread) {
         #endif
 #endif
 
+#ifdef ENABLE_MULTI_PV
         // Perform a search for the current depth for each requested line of play
         for (thread->multiPV = 0; thread->multiPV < limits->multiPV; thread->multiPV++)
             aspirationWindow(thread);
+#else
+        thread->multiPV = 0;
+        aspirationWindow(thread);
+        thread->multiPV = 1;
+#endif
 
 #ifdef ENABLE_MULTITHREAD
         const int mainThread  = thread->index == 0;
@@ -935,9 +946,11 @@ static void* iterativeDeepening(void *vthread) {
         if (!mainThread) continue;
 #endif
 
+#ifdef ENABLE_MULTI_PV
         // We delay reporting during MultiPV searches
         if (limits->multiPV > 1)
             report_multipv_lines(thread);
+#endif
 
 #ifdef LIMITED_BY_SELF
         // Update clock based on score and pv changes
@@ -978,7 +991,11 @@ void getBestMove(Thread *threads, Board *board, Limits *limits, uint16_t *best, 
     newSearchThreadPool(threads, board, limits, &tm);
 
     // Allow Syzygy to refine the move list for optimal results
+#ifdef ENABLE_MULTI_PV
     if (!limits->limitedByMoves && limits->multiPV == 1)
+#else
+    if (!limits->limitedByMoves)
+#endif
         tablebasesProbeDTZ(board, limits);
 
 #ifdef ENABLE_MULTITHREAD

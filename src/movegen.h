@@ -28,11 +28,12 @@ static inline int genAllLegalMoves(Board *board, uint16_t *moves) {
 
     Undo undo[1];
     int size = 0, pseudo = 0;
-    uint16_t pseudoMoves[MAX_MOVES];
+    uint16_t pseudoMoves[MAX_MOVES*2];
 
     // Call genAllNoisyMoves() & genAllNoisyMoves()
     pseudo  = genAllNoisyMoves(board, pseudoMoves);
     pseudo += genAllQuietMoves(board, pseudoMoves + pseudo);
+    assert(pseudo <= MAX_MOVES*2);
 
     // Check each move for legality before copying
     for (int i = 0; i < pseudo; i++) {
