@@ -98,7 +98,7 @@ void tt_clear(int nthreads);
 /// an extremely high, 95%+ hit rate, generating a substantial overall speedup to Ethereal.
 
 enum {
-    PK_CACHE_KEY_SIZE = 18,
+    PK_CACHE_KEY_SIZE = 16,
     PK_CACHE_MASK     = 0xFFFF,
     PK_CACHE_SIZE     = 1 << PK_CACHE_KEY_SIZE,
 };
