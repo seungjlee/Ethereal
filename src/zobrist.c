@@ -26,9 +26,10 @@ uint64_t ZobristEnpassKeys[FILE_NB];
 uint64_t ZobristCastleKeys[SQUARE_NB];
 uint64_t ZobristTurnKey;
 
+#if USE_XORSHIFT
 static uint64_t seed = 1070372ull;
 
-uint64_t rand64() {
+static uint64_t rand64() {
 
     // http://vigna.di.unimi.it/ftp/papers/xorshift.pdf
 
@@ -38,6 +39,14 @@ uint64_t rand64() {
 
     return seed * 2685821657736338717ull;
 }
+#else
+static uint64_t seed = 777;
+static uint64_t rand64() {
+    // From MMIX by Donald Knuth.
+    seed = 6364136223846793005ULL * seed + 1442695040888963407ULL;
+    return seed;
+}
+#endif
 
 void initZobrist() {
 
