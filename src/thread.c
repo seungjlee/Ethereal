@@ -70,8 +70,9 @@ void resetThreadPool(Thread *threads) {
     // calls in order to ensure a deterministic behaviour
 
     for (int i = 0; i < threads->nthreads; i++) {
-
+#ifdef USE_PKTABLE
         memset(&threads[i].pktable, 0, sizeof(PKTable));
+#endif
 
         memset(&threads[i].killers, 0, sizeof(KillerTable));
         memset(&threads[i].cmtable, 0, sizeof(CounterMoveTable));

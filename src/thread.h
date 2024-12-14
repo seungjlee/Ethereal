@@ -69,7 +69,9 @@ struct Thread {
     Undo undoStack[STACK_SIZE];
     NodeState *states, nodeStates[STACK_SIZE];
 
+#ifdef USE_PKTABLE
     ALIGN64 PKTable pktable;
+#endif
     ALIGN64 KillerTable killers;
     ALIGN64 CounterMoveTable cmtable;
     ALIGN64 HistoryTable history;

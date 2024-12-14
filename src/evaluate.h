@@ -134,7 +134,9 @@ struct EvalInfo {
     int kingAttackersWeight[COLOUR_NB];
     int pkeval[COLOUR_NB];
     int pksafety[COLOUR_NB];
+#ifdef USE_PKTABLE
     PKEntry *pkentry;
+#endif
 };
 
 int evaluateBoard(Thread *thread, Board *board);

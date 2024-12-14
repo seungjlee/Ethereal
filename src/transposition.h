@@ -97,14 +97,19 @@ void tt_clear(int nthreads);
 /// While this table is seldom accessed when using Ethereal NNUE, the table generally has
 /// an extremely high, 95%+ hit rate, generating a substantial overall speedup to Ethereal.
 
+#ifdef USE_PKTABLE
 enum {
     PK_CACHE_KEY_SIZE = 16,
-    PK_CACHE_MASK     = 0xFFFF,
     PK_CACHE_SIZE     = 1 << PK_CACHE_KEY_SIZE,
+    PK_CACHE_MASK     = PK_CACHE_SIZE
 };
+#endif
 
 struct PKEntry { uint64_t pkhash, passed; int eval, safetyw, safetyb; };
+
+#ifdef USE_PKTABLE
 typedef PKEntry PKTable[PK_CACHE_SIZE];
 
 PKEntry* getCachedPawnKingEval(Thread *thread, const Board *board);
 void storeCachedPawnKingEval(Thread *thread, const Board *board, uint64_t passed, int eval, int safety[2]);
+#endif
