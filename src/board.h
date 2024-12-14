@@ -27,7 +27,9 @@ enum{ MAX_HISTORY = 16384 };
 struct Board {
     uint8_t squares[SQUARE_NB];
     uint64_t pieces[8], colours[3];
-    uint64_t hash, pkhash, kingAttackers, threats;
+    uint64_t hash;
+    uint32_t pkhash;
+    uint64_t kingAttackers, threats;
     uint64_t castleRooks, castleMasks[SQUARE_NB];
     int turn, epSquare, halfMoveCounter, fullMoveCounter;
     int psqtmat, numMoves, chess960;
@@ -36,7 +38,9 @@ struct Board {
 };
 
 struct Undo {
-    uint64_t hash, pkhash, kingAttackers, threats, castleRooks;
+    uint64_t hash;
+    uint32_t pkhash;
+    uint64_t kingAttackers, threats, castleRooks;
     int epSquare, halfMoveCounter, psqtmat, capturePiece;
 };
 

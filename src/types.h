@@ -32,7 +32,10 @@ enum { WHITE, BLACK };
 
 enum { PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING };
 
-enum { MAX_PLY = TB_MAX_PLY, MAX_MOVES = TB_MAX_MOVES };
+enum {
+    MAX_PLY = 64,
+    MAX_MOVES = TB_MAX_MOVES
+};
 
 enum {
     WHITE_PAWN   =  0, BLACK_PAWN   =  1,

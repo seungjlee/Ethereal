@@ -3,7 +3,6 @@
 
 #define TB_MAX_MOVES                288
 #define TB_MAX_CAPTURES             64
-#define TB_MAX_PLY                  224
 
 #define TB_LOSS                     0       /* LOSS */
 #define TB_BLESSED_LOSS             1       /* LOSS but 50-move draw */

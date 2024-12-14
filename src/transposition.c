@@ -232,7 +232,6 @@ void tt_clear(int nthreads) {
 #endif
 }
 
-#ifdef USE_PKTABLE
 /// Simple Pawn+King Evaluation Hash Table, which also stores some additional
 /// safety information for use in King Safety, when not using NNUE evaluations
 
@@ -245,4 +244,3 @@ void storeCachedPawnKingEval(Thread *thread, const Board *board, uint64_t passed
     PKEntry *pke = &thread->pktable[board->pkhash & PK_CACHE_MASK];
     *pke = (PKEntry) { board->pkhash, passed, eval, safety[WHITE], safety[BLACK] };
 }
-#endif

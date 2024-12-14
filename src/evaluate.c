@@ -457,21 +457,15 @@ int evaluateBoard(Thread *thread, Board *board) {
         eval = evaluatePieces(&ei, board);
 
         pkeval = ei.pkeval[WHITE] - ei.pkeval[BLACK];
-#ifdef USE_PKTABLE
         if (ei.pkentry == NULL) pkeval += computePKNetwork(board);
-#else
-        pkeval += computePKNetwork(board);
-#endif
 
         eval += pkeval + board->psqtmat;
         eval += evaluateClosedness(&ei, board);
         eval += evaluateComplexity(&ei, board, eval);
 
-#ifdef USE_PKTABLE
         // Store a new Pawn King Entry if we did not have one
         if (!TRACE && ei.pkentry == NULL)
             storeCachedPawnKingEval(thread, board, ei.passedPawns, pkeval, ei.pksafety);
-#endif
 
         // Scale evaluation based on remaining material
         factor = evaluateScaleFactor(board, eval);
@@ -531,10 +525,8 @@ int evaluatePawns(EvalInfo *ei, Board *board, int colour) {
     attacks = ei->pawnAttacks[US] & ei->kingAreas[THEM];
     ei->kingAttacksCount[THEM] += popcount(attacks);
 
-#ifdef USE_PKTABLE
     // Pawn hash holds the rest of the pawn evaluation
     if (ei->pkentry != NULL) return eval;
-#endif
 
     pawns = board->pieces[PAWN];
     myPawns = tempPawns = pawns & board->colours[US];
@@ -863,10 +855,8 @@ int evaluateQueens(EvalInfo *ei, Board *board, int colour) {
 }
 
 int evaluateKingsPawns(EvalInfo *ei, Board *board, int colour) {
-#ifdef USE_PKTABLE
     // Skip computations if results are cached in the Pawn King Table
     if (ei->pkentry != NULL) return 0;
-#endif
 
     const int US = colour, THEM = !colour;
 
@@ -1377,21 +1367,12 @@ void initEvalInfo(Thread *thread, Board *board, EvalInfo *ei) {
     ei->kingAttackersWeight[WHITE] = ei->kingAttackersWeight[BLACK] = 0;
 
     // Try to read a hashed Pawn King Eval. Otherwise, start from scratch
-#ifdef USE_PKTABLE
     ei->pkentry         = getCachedPawnKingEval(thread, board);
     ei->passedPawns     = ei->pkentry == NULL ? 0ull : ei->pkentry->passed;
     ei->pkeval[WHITE]   = ei->pkentry == NULL ? 0    : ei->pkentry->eval;
     ei->pkeval[BLACK]   = 0; //ei->pkentry == NULL ? 0    : 0;
     ei->pksafety[WHITE] = ei->pkentry == NULL ? 0    : ei->pkentry->safetyw;
     ei->pksafety[BLACK] = ei->pkentry == NULL ? 0    : ei->pkentry->safetyb;
-#else
-    (void)(thread);
-    ei->passedPawns     = 0;
-    ei->pkeval[WHITE]   = 0;
-    ei->pkeval[BLACK]   = 0;
-    ei->pksafety[WHITE] = 0;
-    ei->pksafety[BLACK] = 0;
-#endif
 }
 
 void initEval() {

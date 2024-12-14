@@ -181,7 +181,7 @@ typedef uint16_t PyrrhicMove;
 
 struct TbRootMove {
   PyrrhicMove move;
-  PyrrhicMove pv[TB_MAX_PLY];
+//   PyrrhicMove pv[TB_MAX_PLY];
   unsigned pvSize;
   int32_t tbScore, tbRank;
 };

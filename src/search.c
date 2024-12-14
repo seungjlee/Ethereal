@@ -300,6 +300,7 @@ static int qsearch(Thread *thread, PVariation *pv, int alpha, int beta) {
                 // Update the Principle Variation
                 pv->length = 1 + lpv.length;
                 pv->line[0] = move;
+                assert(pv->length <= MAX_PLY);
                 memcpy(pv->line + 1, lpv.line, sizeof(uint16_t) * lpv.length);
             }
 
@@ -795,6 +796,7 @@ static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth
                 // Copy our child's PV and prepend this move to it
                 pv->length = 1 + lpv.length;
                 pv->line[0] = move;
+                assert(pv->length <= MAX_PLY);
                 memcpy(pv->line + 1, lpv.line, sizeof(uint16_t) * lpv.length);
 
                 // Search failed high
