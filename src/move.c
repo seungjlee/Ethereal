@@ -44,6 +44,8 @@ static inline void updateCastleZobrist(Board *board, uint64_t oldRooks, uint64_t
 }
 
 int apply(Thread *thread, Board *board, uint16_t move) {
+    ASSERT_PRINT_INT(thread->height >= 0, thread->height);
+    ASSERT_PRINT_INT(thread->height < STACK_SIZE, thread->height);
 
     NodeState *const ns = &thread->states[thread->height];
 
@@ -83,6 +85,8 @@ int apply(Thread *thread, Board *board, uint16_t move) {
 }
 
 void applyLegal(Thread *thread, Board *board, uint16_t move) {
+    ASSERT_PRINT_INT(thread->height >= 0, thread->height);
+    ASSERT_PRINT_INT(thread->height < STACK_SIZE, thread->height);
 
     NodeState *const ns = &thread->states[thread->height];
 
