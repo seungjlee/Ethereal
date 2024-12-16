@@ -199,6 +199,8 @@ void *start_search_threads(void *arguments) {
 }
 
 static int qsearch(Thread *thread, PVariation *pv, int alpha, int beta) {
+    ASSERT_PRINT_INT(thread->height >= 0, thread->height);
+    ASSERT_PRINT_INT(thread->height < STACK_SIZE, thread->height);
 
     Board *const board  = &thread->board;
     NodeState *const ns = &thread->states[thread->height];
@@ -225,7 +227,8 @@ static int qsearch(Thread *thread, PVariation *pv, int alpha, int beta) {
 
     // Step 2. Draw Detection. Check for the fifty move rule, repetition, or insufficient
     // material. Add variance to the draw score, to avoid blindness to 3-fold lines
-    if (boardIsDrawn(board, thread->height)) return 1 - (thread->nodes & 2);
+    if (boardIsDrawn(board, thread->height))
+        return 1 - (thread->nodes & 2);
 
     // Step 3. Max Draft Cutoff. If we are at the maximum search draft,
     // then end the search here with a static eval of the current board
@@ -302,7 +305,7 @@ static int qsearch(Thread *thread, PVariation *pv, int alpha, int beta) {
                 // Update the Principle Variation
                 pv->length = 1 + lpv.length;
                 pv->line[0] = move;
-                assert(pv->length <= MAX_PLY);
+                assert(pv->length < MAX_PLY);
                 memcpy(pv->line + 1, lpv.line, sizeof(uint16_t) * lpv.length);
             }
 
@@ -560,7 +563,7 @@ static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth
 
                 // For low depths, or after the above, verify with a reduced search
                 if (depth < 2 * ProbCutDepth || value >= rBeta) {
-                    if (!board->kingAttackers)
+                    if (depth-4 <= 0 && !board->kingAttackers)
                         value = -qsearch(thread, &lpv, -rBeta, -rBeta+1);
                     else
                         value = -search(thread, &lpv, -rBeta, -rBeta+1, depth-4, !cutnode);
@@ -1160,7 +1163,11 @@ static int singularity(Thread *thread, uint16_t ttMove, int ttValue, int depth, 
 
     // Search on a null rBeta window, excluding the tt-move
     ns->excluded = ttMove;
-    value = search(thread, &lpv, rBeta-1, rBeta, (depth - 1) / 2, cutnode);
+    int search_depth = (depth - 1) / 2;
+    if (search_depth <= 0 && !board->kingAttackers)
+        value = qsearch(thread, &lpv, rBeta-1, rBeta);
+    else
+        value = search(thread, &lpv, rBeta-1, rBeta, search_depth, cutnode);
     ns->excluded = NONE_MOVE;
 
     // We reused the Move Picker, so make sure we cleanup
