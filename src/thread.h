@@ -78,7 +78,9 @@ struct Thread {
 
     int index, nthreads;
     Thread *threads;
+#ifdef ENABLE_MULTITHREAD
     jmp_buf jbuffer;
+#endif
 };
 
 

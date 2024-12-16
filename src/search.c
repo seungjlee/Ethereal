@@ -524,7 +524,10 @@ static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth
         R = 4 + depth / 5 + MIN(3, (eval - beta) / 191) + (ns-1)->tactical;
 
         apply(thread, board, NULL_MOVE);
-        value = -search(thread, &lpv, -beta, -beta+1, depth-R, !cutnode);
+        if (depth-R <= 0 && !board->kingAttackers)
+            value = -qsearch(thread, &lpv, -beta, -beta+1);
+        else
+            value = -search(thread, &lpv, -beta, -beta+1, depth-R, !cutnode);
         revert(thread, board, NULL_MOVE);
 
         // Don't return unproven TB-Wins or Mates
@@ -554,8 +557,12 @@ static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth
                     value = -qsearch(thread, &lpv, -rBeta, -rBeta+1);
 
                 // For low depths, or after the above, verify with a reduced search
-                if (depth < 2 * ProbCutDepth || value >= rBeta)
-                    value = -search(thread, &lpv, -rBeta, -rBeta+1, depth-4, !cutnode);
+                if (depth < 2 * ProbCutDepth || value >= rBeta) {
+                    if (!board->kingAttackers)
+                        value = -qsearch(thread, &lpv, -rBeta, -rBeta+1);
+                    else
+                        value = -search(thread, &lpv, -rBeta, -rBeta+1, depth-4, !cutnode);
+                }
 
                 // Revert the board state
                 revert(thread, board, move);
@@ -742,7 +749,10 @@ static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth
             R = MIN(depth - 1, MAX(R, 1));
 
             // Perform reduced depth search on a Null Window
-            value = -search(thread, &lpv, -alpha-1, -alpha, newDepth-R, true);
+            if (newDepth-R <= 0 && !board->kingAttackers)
+                value = -qsearch(thread, &lpv, -alpha-1, -alpha);
+            else
+                value = -search(thread, &lpv, -alpha-1, -alpha, newDepth-R, true);
 
             if (value > alpha && R > 1) {
 
@@ -751,8 +761,12 @@ static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth
                 newDepth += value > best + 35;
                 newDepth -= value < best + newDepth;
 
-                if (newDepth - 1 > lmrDepth)
-                    value = -search(thread, &lpv, -alpha-1, -alpha, newDepth-1, !cutnode);
+                if (newDepth - 1 > lmrDepth) {
+                    if (newDepth - 1 <= 0 && !board->kingAttackers)
+                        value = -qsearch(thread, &lpv, -alpha-1, -alpha);
+                    else
+                        value = -search(thread, &lpv, -alpha-1, -alpha, newDepth-1, !cutnode);
+                }
 
                 doFullSearch = false;
             }
@@ -764,12 +778,20 @@ static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth
         else doFullSearch = !PvNode || played > 1;
 
         // Full depth search on a null window
-        if (doFullSearch)
-            value = -search(thread, &lpv, -alpha-1, -alpha, newDepth-1, !cutnode);
+        if (doFullSearch) {
+            if (newDepth - 1 <= 0 && !board->kingAttackers)
+                value = -qsearch(thread, &lpv, -alpha-1, -alpha);
+            else
+                value = -search(thread, &lpv, -alpha-1, -alpha, newDepth-1, !cutnode);
+        }
 
         // Full depth search on a full window for some PvNodes
-        if (PvNode && (played == 1 || value > alpha))
-            value = -search(thread, &lpv, -beta, -alpha, newDepth-1, FALSE);
+        if (PvNode && (played == 1 || value > alpha)) {
+            if (newDepth - 1 <= 0 && !board->kingAttackers)
+                value = -qsearch(thread, &lpv, -beta, -alpha);
+            else
+                value = -search(thread, &lpv, -beta, -alpha, newDepth-1, FALSE);
+        }
 
         // Revert the board state
         revert(thread, board, move);
