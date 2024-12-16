@@ -67,7 +67,7 @@ static void setSquare(Board *board, int colour, int piece, int sq) {
     board->psqtmat += PSQT[board->squares[sq]][sq];
     board->hash ^= ZobristKeys[board->squares[sq]][sq];
     if (piece == PAWN || piece == KING)
-        board->pkhash ^= ZobristKeys[board->squares[sq]][sq];
+        board->pkhash ^= HashPK(board->squares[sq], sq);
 }
 
 static inline int stringToSquare(char *str) {

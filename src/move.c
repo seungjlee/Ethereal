@@ -186,11 +186,11 @@ void applyNormalMove(Board *board, uint16_t move, Undo *undo) {
                    ^  ZobristTurnKey;
 
     if (fromType == PAWN || fromType == KING)
-        board->pkhash ^= ZobristKeys[fromPiece][from]
-                      ^  ZobristKeys[fromPiece][to];
+        board->pkhash ^= HashPK(fromPiece, from)
+                      ^  HashPK(fromPiece, to);
 
     if (toType == PAWN)
-        board->pkhash ^= ZobristKeys[toPiece][to];
+        board->pkhash ^= HashPK(toPiece, to);
 
     if (fromType == PAWN && (to ^ from) == 16) {
 
@@ -248,8 +248,8 @@ void applyCastleMove(Board *board, uint16_t move, Undo *undo) {
                    ^  ZobristKeys[rFromPiece][rTo]
                    ^  ZobristTurnKey;
 
-    board->pkhash  ^= ZobristKeys[fromPiece][from]
-                   ^  ZobristKeys[fromPiece][to];
+    board->pkhash  ^= HashPK(fromPiece, from)
+                   ^  HashPK(fromPiece, to);
 
     assert(pieceType(fromPiece) == KING);
 
@@ -291,9 +291,9 @@ void applyEnpassMove(Board *board, uint16_t move, Undo *undo) {
                    ^  ZobristKeys[enpassPiece][ep]
                    ^  ZobristTurnKey;
 
-    board->pkhash  ^= ZobristKeys[fromPiece][from]
-                   ^  ZobristKeys[fromPiece][to]
-                   ^  ZobristKeys[enpassPiece][ep];
+    board->pkhash  ^= HashPK(fromPiece, from)
+                   ^  HashPK(fromPiece, to)
+                   ^  HashPK(enpassPiece, ep);
 
     assert(pieceType(fromPiece) == PAWN);
     assert(pieceType(enpassPiece) == PAWN);
@@ -341,7 +341,7 @@ void applyPromotionMove(Board *board, uint16_t move, Undo *undo) {
                    ^  ZobristKeys[toPiece][to]
                    ^  ZobristTurnKey;
 
-    board->pkhash  ^= ZobristKeys[fromPiece][from];
+    board->pkhash  ^= HashPK(fromPiece, from);
 
     assert(pieceType(fromPiece) == PAWN);
     assert(pieceType(toPiece) != PAWN);

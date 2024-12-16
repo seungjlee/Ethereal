@@ -28,3 +28,34 @@ extern uint64_t ZobristCastleKeys[SQUARE_NB];
 extern uint64_t ZobristTurnKey;
 
 void initZobrist();
+
+#ifdef USE_XORSHIFT
+static uint64_t seed = 1070372ull;
+
+static uint64_t rand64() {
+
+    // http://vigna.di.unimi.it/ftp/papers/xorshift.pdf
+
+    seed ^= seed >> 12;
+    seed ^= seed << 25;
+    seed ^= seed >> 27;
+
+    return seed * 2685821657736338717ull;
+}
+#else
+
+// From MMIX by Donald Knuth.
+static inline uint64_t mmix64(uint64_t x) {
+    x = 6364136223846793005ULL * x + 1442695040888963407ULL;
+    return x;
+}
+static inline uint32_t HashPK(uint32_t x, uint32_t y) {
+    return (uint32_t)mmix64(y << 8 | x);
+}
+
+static uint64_t seed = 777;
+static inline uint64_t rand64() {
+    seed = mmix64(seed);
+    return seed;
+}
+#endif
