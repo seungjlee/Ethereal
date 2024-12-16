@@ -1,7 +1,7 @@
 #ifndef PYRRHIC_CONSTANTS_H
 #define PYRRHIC_CONSTANTS_H
 
-#define TB_MAX_MOVES                192
+#define TB_MAX_MOVES                256
 #define TB_MAX_CAPTURES             64
 
 #define TB_LOSS                     0       /* LOSS */

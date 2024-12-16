@@ -129,3 +129,13 @@ typedef int16_t ContinuationTable[2][PIECE_NB][SQUARE_NB][CONT_NB][PIECE_NB][SQU
 #define ALIGN64 alignas(64)
 #define INLINE static inline __attribute__((always_inline))
 #define NOINLINE __attribute__((noinline))
+
+#ifdef NDEBUG
+#define ASSERT_PRINT_INT(expr, var)
+#define ASSERT_PRINT_FLOAT(expr, var)
+#else
+#define ASSERT_PRINT_INT(expr, var) \
+if (!(expr)) { fprintf(stderr, "%ld\n", (int64_t)var); assert(expr); }
+#define ASSERT_PRINT_FLOAT(expr, var) \
+if (!(expr)) { fprintf(stderr, "%lf\n", (double)var); assert(expr); }
+#endif

@@ -28,6 +28,7 @@
 #include "types.h"
 
 static inline int stat_bonus(int depth) {
+    ASSERT_PRINT_INT(depth >= 0, depth);
 
     // Approximately verbatim stat bonus formula from Stockfish
     return depth > 13 ? 32 : 16 * depth * depth + 128 * MAX(depth - 1, 0);
@@ -64,7 +65,6 @@ static int16_t* underlying_capture_history(Thread *thread, uint16_t move) {
 }
 
 static void underlying_quiet_history(Thread *thread, uint16_t move, int16_t *histories[3]) {
-
     static const int16_t NULL_HISTORY = 0; // Always zero to handle missing CM/FM history
 
     NodeState *const ns    = &thread->states[thread->height];
@@ -79,13 +79,17 @@ static void underlying_quiet_history(Thread *thread, uint16_t move, int16_t *his
     const bool threat_from = testBit(threats, from);
     const bool threat_to   = testBit(threats, to);
 
-    // Set Counter Move History if it exists
-    histories[0] = (int16_t*)((ns-1)->continuations == NULL
-                 ? &NULL_HISTORY : &(*(ns-1)->continuations)[0][piece][to]);
+    histories[0] = (int16_t*)&NULL_HISTORY;
+    histories[1] = (int16_t*)&NULL_HISTORY;
+    if (thread->height > 0) {
+        // Set Counter Move History if it exists
+        histories[0] = (int16_t*)((ns-1)->continuations == NULL
+                    ? &NULL_HISTORY : &(*(ns-1)->continuations)[0][piece][to]);
 
-    // Set Followup Move History if it exists
-    histories[1] = (int16_t*)((ns-2)->continuations == NULL
-                 ? &NULL_HISTORY : &(*(ns-2)->continuations)[1][piece][to]);
+        // Set Followup Move History if it exists
+        histories[1] = (int16_t*)((ns-2)->continuations == NULL
+                    ? &NULL_HISTORY : &(*(ns-2)->continuations)[1][piece][to]);
+    }
 
     // Set Butterfly History, which will always exist
     histories[2] = &thread->history[thread->board.turn][threat_from][threat_to][from][to];
@@ -93,6 +97,8 @@ static void underlying_quiet_history(Thread *thread, uint16_t move, int16_t *his
 
 
 void update_history_heuristics(Thread *thread, uint16_t *moves, int length, int depth) {
+    ASSERT_PRINT_INT(thread->height > 0, thread->height);
+    ASSERT_PRINT_INT(length > 0, length);
 
     NodeState *const prev = &thread->states[thread->height-1];
     const int colour = thread->board.turn;
@@ -106,6 +112,8 @@ void update_history_heuristics(Thread *thread, uint16_t *moves, int length, int 
 }
 
 void update_killer_moves(Thread *thread, uint16_t move) {
+    ASSERT_PRINT_INT(thread->height >=0, thread->height);
+    ASSERT_PRINT_INT(thread->height <= MAX_PLY, thread->height);
 
     // Avoid saving the same Killer Move twice
     if (thread->killers[thread->height][0] != move) {
@@ -120,10 +128,15 @@ void get_refutation_moves(Thread *thread, uint16_t *killer1, uint16_t *killer2, 
     // at the same ply in sibling nodes. Additionally, we may have a counter move, which
     // refutes the previously moved piece's destination square, somewhere in the search tree
 
-    NodeState *const prev = &thread->states[thread->height-1];
+    if (thread->height < 1) {
+        *counter = NONE_MOVE;
+    }
+    else  {
+        NodeState *const prev = &thread->states[thread->height-1];
 
-    *counter = (prev->move == NONE_MOVE || prev->move == NULL_MOVE) ? NONE_MOVE
-             :  thread->cmtable[!thread->board.turn][prev->movedPiece][MoveTo(prev->move)];
+        *counter = (prev->move == NONE_MOVE || prev->move == NULL_MOVE) ? NONE_MOVE
+                :  thread->cmtable[!thread->board.turn][prev->movedPiece][MoveTo(prev->move)];
+    }
 
     *killer1 = thread->killers[thread->height][0];
     *killer2 = thread->killers[thread->height][1];

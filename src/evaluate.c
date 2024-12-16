@@ -441,8 +441,7 @@ int evaluateBoard(Thread *thread, Board *board) {
     int phase, eval, pkeval, factor = SCALE_NORMAL;
 
     // We can recognize positions we just evaluated
-    // assert(thread->height > 0);
-    assert(thread->height <= STACK_SIZE);
+    ASSERT_PRINT_INT(thread->height <= STACK_SIZE, thread->height);
     if (thread->height > 0 && thread->states[thread->height-1].move == NULL_MOVE)
         return -thread->states[thread->height-1].eval + 2 * Tempo;
 

@@ -80,7 +80,7 @@ static void uciGo(UCIGoStruct *ucigo, Thread *threads, Board *board, int multiPV
 
     uint16_t moves[MAX_MOVES];
     int size = genAllLegalMoves(board, moves), idx = 0;
-    assert((size_t)size <= sizeof(moves)/sizeof(moves[0]));
+    ASSERT_PRINT_INT((size_t)size <= sizeof(moves)/sizeof(moves[0]), size);
 
     Limits *limits = &ucigo->limits;
     memset(limits, 0, sizeof(Limits));

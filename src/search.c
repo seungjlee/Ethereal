@@ -229,8 +229,10 @@ static int qsearch(Thread *thread, PVariation *pv, int alpha, int beta) {
 
     // Step 3. Max Draft Cutoff. If we are at the maximum search draft,
     // then end the search here with a static eval of the current board
-    if (thread->height >= MAX_PLY)
+    if (thread->height >= MAX_PLY) {
+        fprintf(stderr, "Warning: thread->height >= MAX_PLY (%d)\n", thread->height);
         return evaluateBoard(thread, board);
+    }
 
     // Step 4. Probe the Transposition Table, adjust the value, and consider cutoffs
     if ((ttHit = tt_probe(board->hash, thread->height, &ttMove, &ttValue, &ttEval, &ttDepth, &ttBound))) {
@@ -838,7 +840,7 @@ static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth
     // Step 20 (~760 elo). Update History counters on a fail high for a quiet move.
     // We also update Capture History Heuristics, which augment or replace MVV-LVA.
 
-    if (best >= beta && !moveIsTactical(board, bestMove))
+    if (thread->height > 0 && best >= beta && !moveIsTactical(board, bestMove))
         update_history_heuristics(thread, quietsTried, quietsPlayed, depth);
 
     if (best >= beta)
@@ -1145,6 +1147,7 @@ int staticExchangeEvaluation(Thread *thread, uint16_t move, int threshold) {
 }
 
 static int singularity(Thread *thread, uint16_t ttMove, int ttValue, int depth, int PvNode, int alpha, int beta, bool cutnode) {
+    ASSERT_PRINT_INT(thread->height > 0, thread->height);
 
     Board *const board  = &thread->board;
     NodeState *const ns = &thread->states[thread->height-1];

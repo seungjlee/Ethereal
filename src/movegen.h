@@ -33,7 +33,7 @@ static inline int genAllLegalMoves(Board *board, uint16_t *moves) {
     // Call genAllNoisyMoves() & genAllNoisyMoves()
     pseudo  = genAllNoisyMoves(board, pseudoMoves);
     pseudo += genAllQuietMoves(board, pseudoMoves + pseudo);
-    assert((size_t)pseudo <= sizeof(pseudoMoves)/sizeof(pseudoMoves[0]));
+    ASSERT_PRINT_INT((size_t)pseudo <= sizeof(pseudoMoves)/sizeof(pseudoMoves[0]), pseudo);
 
     // Check each move for legality before copying
     for (int i = 0; i < pseudo; i++) {
