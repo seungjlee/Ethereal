@@ -174,7 +174,10 @@ int main(int argc, char **argv) {
 
     // Initialize core components of Ethereal
     initAttacks(); initMasks(); initEval();
-    initSearch(); initZobrist();
+    initSearch();
+#ifdef USE_XORSHIFT
+    initZobrist();
+#endif
     tt_init(1, 1);
 
     initPKNetwork();

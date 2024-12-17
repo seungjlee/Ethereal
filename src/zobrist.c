@@ -21,6 +21,7 @@
 #include "types.h"
 #include "zobrist.h"
 
+#ifdef USE_XORSHIFT
 uint64_t ZobristKeys[32][SQUARE_NB];
 uint64_t ZobristEnpassKeys[FILE_NB];
 uint64_t ZobristCastleKeys[SQUARE_NB];
@@ -45,3 +46,4 @@ void initZobrist() {
     // Init the Zobrist key for side to move
     ZobristTurnKey = rand64();
 }
+#endif

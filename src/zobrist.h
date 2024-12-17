@@ -22,6 +22,7 @@
 
 #include "types.h"
 
+#ifdef USE_XORSHIFT
 extern uint64_t ZobristKeys[32][SQUARE_NB];
 extern uint64_t ZobristEnpassKeys[FILE_NB];
 extern uint64_t ZobristCastleKeys[SQUARE_NB];
@@ -29,7 +30,6 @@ extern uint64_t ZobristTurnKey;
 
 void initZobrist();
 
-#ifdef USE_XORSHIFT
 static uint64_t seed = 1070372ull;
 
 static uint64_t rand64() {
@@ -52,6 +52,18 @@ static inline uint64_t mmix64(uint64_t x) {
 static inline uint32_t HashPK(uint32_t x, uint32_t y) {
     return (uint32_t)mmix64(y << 8 | x);
 }
+
+static inline uint64_t HashBoard(uint32_t x, uint32_t y) {
+    return mmix64(1ULL << 40 | y << 8 | x);
+}
+static inline uint64_t HashBoardEnpass(uint32_t x) {
+    return mmix64(1ULL << 42 | x);
+}
+static inline uint64_t HashBoardCastle(uint32_t x) {
+    return mmix64(1ULL << 44 | x);
+}
+
+static const uint64_t HashTurnKey = 16430674600777974095ULL; // mmix64(1ULL << 60)
 
 static uint64_t seed = 777;
 static inline uint64_t rand64() {

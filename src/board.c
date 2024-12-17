@@ -65,7 +65,7 @@ static void setSquare(Board *board, int colour, int piece, int sq) {
     setBit(&board->pieces[piece], sq);
 
     board->psqtmat += PSQT[board->squares[sq]][sq];
-    board->hash ^= ZobristKeys[board->squares[sq]][sq];
+    board->hash ^= HashBoard(board->squares[sq], sq);
     if (piece == PAWN || piece == KING)
         board->pkhash ^= HashPK(board->squares[sq], sq);
 }
@@ -127,7 +127,7 @@ void boardFromFEN(Board *board, const char *fen, int chess960) {
     // Turn of play
     token = strtok_r(NULL, " ", &strPos);
     board->turn = token[0] == 'w' ? WHITE : BLACK;
-    if (board->turn == BLACK) board->hash ^= ZobristTurnKey;
+    if (board->turn == BLACK) board->hash ^= HashTurnKey;
 
     // Castling rights
     token = strtok_r(NULL, " ", &strPos);
@@ -154,12 +154,12 @@ void boardFromFEN(Board *board, const char *fen, int chess960) {
     }
 
     rooks = board->castleRooks;
-    while (rooks) board->hash ^= ZobristCastleKeys[poplsb(&rooks)];
+    while (rooks) board->hash ^= HashBoardCastle(poplsb(&rooks));
 
     // En passant square
     board->epSquare = stringToSquare(strtok_r(NULL, " ", &strPos));
     if (board->epSquare != -1)
-        board->hash ^= ZobristEnpassKeys[fileOf(board->epSquare)];
+        board->hash ^= HashBoardEnpass(fileOf(board->epSquare));
 
     // Half & Full Move Counters
     board->halfMoveCounter = atoi(strtok_r(NULL, " ", &strPos));
