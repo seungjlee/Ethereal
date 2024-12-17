@@ -311,6 +311,7 @@ int boardDrawnByInsufficientMaterial(Board *board) {
             || (!board->pieces[BISHOP] && popcount(board->pieces[KNIGHT]) <= 2));
 }
 
+#ifdef ENABLE_PERFT
 uint64_t perft(Board *board, int depth) {
 
     Undo undo[1];
@@ -333,3 +334,4 @@ uint64_t perft(Board *board, int depth) {
 
     return found;
 }
+#endif

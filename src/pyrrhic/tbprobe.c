@@ -42,7 +42,7 @@
 using namespace std;
 #endif
 
-#define TB_PIECES    (7)
+#define TB_PIECES    (6)
 #define TB_HASHBITS  (TB_PIECES < 7 ?  11 : 12)
 #define TB_MAX_DTZ   (0x40000)
 #define TB_MAX_PIECE (TB_PIECES < 7 ? 254 : 650)
@@ -56,7 +56,9 @@ using namespace std;
 
 #ifndef _WIN32
 #include <fcntl.h>
+#ifdef ENABLE_MULTITHREAD
 #include <pthread.h>
+#endif
 #include <unistd.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -77,6 +79,7 @@ typedef HANDLE map_t;
 
 #define DECOMP64
 
+#ifdef ENABLE_MULTITHREAD
 #if defined(__cplusplus) && (__cplusplus >= 201103L)
     #include <mutex>
     #define LOCK_T std::mutex
@@ -98,6 +101,12 @@ typedef HANDLE map_t;
         #define LOCK(x) WaitForSingleObject(x, INFINITE)
         #define UNLOCK(x) ReleaseMutex(x)
     #endif
+#endif
+#else
+    #define LOCK_INIT(x)
+    #define LOCK_DESTROY(x)
+    #define LOCK(x)
+    #define UNLOCK(x)
 #endif
 
 #define TB_MAX(a,b)     ((a) > (b) ? (a) : (b))
@@ -137,7 +146,9 @@ static size_t file_size(FD fd) {
 #endif
 }
 
+#ifdef ENABLE_MULTITHREAD
 static LOCK_T tbMutex;
+#endif
 static int initialized = 0;
 static int numPaths = 0;
 static char *pathString = NULL;
@@ -2036,7 +2047,7 @@ static uint16_t probe_root(PyrrhicPosition *pos, int *score, unsigned *results)
         if (!success)
             return 0;
         scores[i] = v;
-        if (results != NULL)
+        assert(results != NULL);
         {
             unsigned res = 0;
             res = TB_SET_WDL(res, dtz_to_wdl(pos->rule50, v));
@@ -2048,10 +2059,10 @@ static uint16_t probe_root(PyrrhicPosition *pos, int *score, unsigned *results)
             results[j++] = res;
         }
     }
-    if (results != NULL)
-        results[j++] = TB_RESULT_FAILED;
-    if (score != NULL)
-        *score = dtz;
+    assert(results != NULL);
+    assert(score != NULL);
+    results[j++] = TB_RESULT_FAILED;
+    *score = dtz;
 
     // Now be a bit smart about filtering out moves.
     if (dtz > 0)        // winning (or 50-move rule draw)

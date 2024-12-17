@@ -74,4 +74,6 @@ static inline int boardIsDrawn(Board *board, int height) {
         || boardDrawnByInsufficientMaterial(board);
 }
 
+#ifdef ENABLE_PERFT
 uint64_t perft(Board *board, int depth);
+#endif

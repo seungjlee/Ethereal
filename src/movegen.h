@@ -32,6 +32,7 @@ static inline int genAllLegalMoves(Board *board, uint16_t *moves) {
 
     // Call genAllNoisyMoves() & genAllNoisyMoves()
     pseudo  = genAllNoisyMoves(board, pseudoMoves);
+    ASSERT_PRINT_INT((size_t)pseudo <= sizeof(pseudoMoves)/sizeof(pseudoMoves[0]), pseudo);
     pseudo += genAllQuietMoves(board, pseudoMoves + pseudo);
     ASSERT_PRINT_INT((size_t)pseudo <= sizeof(pseudoMoves)/sizeof(pseudoMoves[0]), pseudo);
 

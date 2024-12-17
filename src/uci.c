@@ -274,9 +274,10 @@ int main(int argc, char **argv) {
         else if (strEquals(str, "quit"))
             break;
 
+#ifdef ENABLE_PERFT
         else if (strStartsWith(str, "perft"))
             printf("%"PRIu64"\n", perft(&board, atoi(str + strlen("perft ")))), fflush(stdout);
-
+#endif
         else if (strStartsWith(str, "print"))
             printBoard(&board), fflush(stdout);
     }
