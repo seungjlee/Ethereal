@@ -35,7 +35,7 @@
 #include "movegen.h"
 #include "network.h"
 // #include "nnue/nnue.h"
-// #include "pyrrhic/tbprobe.h"
+#include "pyrrhic/tbprobe.h"
 #include "search.h"
 #include "thread.h"
 #include "timeman.h"
@@ -185,6 +185,7 @@ int main(int argc, char **argv) {
     tt_init(1, 1);
 
     initPKNetwork();
+    tb_init("");
     //nnue_incbin_init();
 
     // Create the UCI-board and our threads
