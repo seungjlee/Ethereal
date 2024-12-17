@@ -46,4 +46,28 @@ void initZobrist() {
     // Init the Zobrist key for side to move
     ZobristTurnKey = rand64();
 }
+#else
+uint64_t HashKeys[32][SQUARE_NB];
+uint64_t HashEnpassKeys[FILE_NB];
+uint64_t HashCastleKeys[SQUARE_NB];
+uint64_t HashTurnKey;
+void InitHashTables() {
+
+    // Init the main Zobrist keys for all pieces
+    for (int piece = PAWN; piece <= KING; piece++)
+        for (int sq = 0; sq < SQUARE_NB; sq++)
+            for (int colour = WHITE; colour <= BLACK; colour++)
+                HashKeys[makePiece(piece, colour)][sq] = rand64();
+
+    // Init the Zobrist keys for each enpass file
+    for (int file = 0; file < FILE_NB; file++)
+        HashEnpassKeys[file] = rand64();
+
+    // Init the Zobrist keys for each castle rook
+    for (int sq = 0; sq < SQUARE_NB; sq++)
+        HashCastleKeys[sq] = rand64();
+
+    // Init the Zobrist key for side to move
+    HashTurnKey = rand64();
+}
 #endif

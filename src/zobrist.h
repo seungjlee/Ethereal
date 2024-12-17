@@ -44,6 +44,15 @@ static uint64_t rand64() {
 }
 #else
 
+#define USE_LOOKUP_TABLE
+#ifdef USE_LOOKUP_TABLE
+extern uint64_t HashKeys[32][SQUARE_NB];
+extern uint64_t HashEnpassKeys[FILE_NB];
+extern uint64_t HashCastleKeys[SQUARE_NB];
+extern uint64_t HashTurnKey;
+void InitHashTables();
+#endif
+
 // From MMIX by Donald Knuth.
 static inline uint64_t mmix64(uint64_t x) {
     x = 6364136223846793005ULL * x + 1442695040888963407ULL;
@@ -54,16 +63,30 @@ static inline uint32_t HashPK(uint32_t x, uint32_t y) {
 }
 
 static inline uint64_t HashBoard(uint32_t x, uint32_t y) {
+#ifdef USE_LOOKUP_TABLE
+    return HashKeys[x][y];
+#else
     return mmix64(1ULL << 40 | y << 8 | x);
+#endif
 }
 static inline uint64_t HashBoardEnpass(uint32_t x) {
+#ifdef USE_LOOKUP_TABLE
+    return HashEnpassKeys[x];
+#else
     return mmix64(1ULL << 42 | x);
+#endif
 }
 static inline uint64_t HashBoardCastle(uint32_t x) {
+#ifdef USE_LOOKUP_TABLE
+    return HashCastleKeys[x];
+#else
     return mmix64(1ULL << 44 | x);
+#endif
 }
 
+#ifndef USE_LOOKUP_TABLE
 static const uint64_t HashTurnKey = 16430674600777974095ULL; // mmix64(1ULL << 60)
+#endif
 
 static uint64_t seed = 777;
 static inline uint64_t rand64() {

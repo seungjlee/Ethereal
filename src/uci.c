@@ -177,6 +177,10 @@ int main(int argc, char **argv) {
     initSearch();
 #ifdef USE_XORSHIFT
     initZobrist();
+#else
+#ifdef USE_LOOKUP_TABLE
+    InitHashTables();
+#endif
 #endif
     tt_init(1, 1);
 
