@@ -57,7 +57,8 @@ extern PKNetwork PKNN;            // Defined by network.c
 const char *StartPosition = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 #ifdef ENABLE_MULTITHREAD
-static void uciGo(UCIGoStruct *ucigo, pthread_t *pthread, Thread *threads, Board *board, int multiPV, char *str)
+static void uciGo(UCIGoStruct *ucigo, pthread_t *pthread, Thread *threads, Board *board, int multiPV, char *str,
+                  int hard_time_limit_msecs)
 #else
 static void uciGo(UCIGoStruct *ucigo, Thread *threads, Board *board, int multiPV, char *str,
                   int hard_time_limit_msecs)
@@ -166,6 +167,9 @@ int main(int argc, char **argv) {
     Thread *threads;
 #ifdef ENABLE_MULTITHREAD
     pthread_t pthreadsgo;
+    const int nthreads = 1;
+#else
+    const int nthreads = 1;
 #endif
     UCIGoStruct uciGoStruct;
 
@@ -182,14 +186,14 @@ int main(int argc, char **argv) {
     InitHashTables();
 #endif
 #endif
-    tt_init(1, 1);
+    tt_init(nthreads, 16);
 
     initPKNetwork();
     tb_init("");
     //nnue_incbin_init();
 
     // Create the UCI-board and our threads
-    threads = createThreadPool(1);
+    threads = createThreadPool(nthreads);
     boardFromFEN(&board, StartPosition, chess960);
 
     // Handle any command line requests
@@ -227,7 +231,11 @@ int main(int argc, char **argv) {
             if (pieces_on_board < 8) {
                 hard_time_limit = 100;
             }
+#ifdef ENABLE_MULTITHREAD
+            uciGo(&uciGoStruct, &pthreadsgo, threads, &board, multiPV, str, hard_time_limit);
+#else
             uciGo(&uciGoStruct, threads, &board, multiPV, str, hard_time_limit);
+#endif
         }
         else if (strEquals(str, "uci")) {
             printf("id name Ethereal " ETHEREAL_VERSION "\n");
@@ -259,7 +267,7 @@ int main(int argc, char **argv) {
 
         else if (strStartsWith(str, "go"))
 #ifdef ENABLE_MULTITHREAD
-            uciGo(&uciGoStruct, &pthreadsgo, threads, &board, multiPV, str);
+            uciGo(&uciGoStruct, &pthreadsgo, threads, &board, multiPV, str, 0);
 #else
             uciGo(&uciGoStruct, threads, &board, multiPV, str, 0);
 #endif

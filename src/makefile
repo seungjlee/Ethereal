@@ -55,7 +55,7 @@ SSSE3FLAGS  = -DUSE_SSSE3 -msse -msse2 -msse3 -mssse3
 AVXFLAGS    = -DUSE_AVX -mavx -msse4.1 $(SSSE3FLAGS)
 AVX2FLAGS   = -DUSE_AVX2 -mavx2 -mfma $(AVXFLAGS)
 
-CFLAGS += -DREPORT_DIAGNOSTICS
+CFLAGS += -DREPORT_DIAGNOSTICS #-DENABLE_MULTITHREAD
 
 ### =========================================================================
 ### Section 2. Native Build Configuration [ Auto-Detection ]

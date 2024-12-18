@@ -45,7 +45,9 @@
 #include "transposition.h"
 #include "types.h"
 #include "uci.h"
-//#include "windows.h"
+#ifdef ENABLE_MULTITHREAD
+#include "windows.h"
+#endif
 
 int LMRTable[64][64];
 int LateMovePruningCounts[2][11];
