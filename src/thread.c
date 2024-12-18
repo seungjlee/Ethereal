@@ -80,29 +80,3 @@ void resetThreadPool(Thread *threads) {
         memset(&threads[i].continuation, 0, sizeof(ContinuationTable));
     }
 }
-
-uint64_t nodesSearchedThreadPool(Thread *threads) {
-
-    // Sum up the node counters across each Thread. Threads have
-    // their own node counters to avoid true sharing the cache
-
-    uint64_t nodes = 0ull;
-
-    for (int i = 0; i < threads->nthreads; i++)
-        nodes += threads->threads[i].nodes;
-
-    return nodes;
-}
-
-uint64_t tbhitsThreadPool(Thread *threads) {
-
-    // Sum up the tbhit counters across each Thread. Threads have
-    // their own tbhit counters to avoid true sharing the cache
-
-    uint64_t tbhits = 0ull;
-
-    for (int i = 0; i < threads->nthreads; i++)
-        tbhits += threads->threads[i].tbhits;
-
-    return tbhits;
-}

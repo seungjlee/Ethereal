@@ -89,8 +89,35 @@ void deleteThreadPool(Thread *threads);
 
 void resetThreadPool(Thread *threads);
 
-uint64_t nodesSearchedThreadPool(Thread *threads);
-uint64_t tbhitsThreadPool(Thread *threads);
+static inline uint64_t nodesSearchedThreadPool(Thread *threads) {
+#ifdef ENABLE_MULTITHREAD
+    // Sum up the node counters across each Thread. Threads have
+    // their own node counters to avoid true sharing the cache
+    uint64_t nodes = 0ull;
+
+    for (int i = 0; i < threads->nthreads; i++)
+        nodes += threads->threads[i].nodes;
+
+    return nodes;
+#else
+    return threads->threads[0].nodes;
+#endif
+}
+
+static inline uint64_t tbhitsThreadPool(Thread *threads) {
+#ifdef ENABLE_MULTITHREAD
+    // Sum up the tbhit counters across each Thread. Threads have
+    // their own tbhit counters to avoid true sharing the cache
+    uint64_t tbhits = 0ull;
+
+    for (int i = 0; i < threads->nthreads; i++)
+        tbhits += threads->threads[i].tbhits;
+
+    return tbhits;
+#else
+    return threads->threads[0].tbhits;
+#endif
+}
 
 static inline void newSearchThreadPool(Thread *threads, Board *board, Limits *limits, TimeManager *tm) {
     // Initialize each Thread in the Thread Pool. We need a reference
