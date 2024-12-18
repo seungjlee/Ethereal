@@ -96,6 +96,7 @@ bool tm_finished(const Thread *thread, const TimeManager *tm) {
 }
 #endif
 
+#ifdef ENABLE_MULTITHREAD
 bool tm_stop_early(const Thread *thread) {
 
     /// Quit early IFF we've surpassed our max time or nodes, and have
@@ -116,3 +117,4 @@ bool tm_stop_early(const Thread *thread) {
 #endif
         &&  elapsed_time(thread->tm) >= thread->tm->max_usage;
 }
+#endif

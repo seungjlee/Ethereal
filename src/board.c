@@ -284,6 +284,7 @@ int boardDrawnByRepetition(Board *board, int height) {
 
     int reps = 0;
 
+    ASSERT_PRINT_INT((size_t)board->numMoves < sizeof(board->history)/sizeof(board->history[0] + 2), board->numMoves - 2);
     // Look through hash histories for our moves
     for (int i = board->numMoves - 2; i >= 0; i -= 2) {
 

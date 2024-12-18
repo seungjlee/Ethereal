@@ -112,6 +112,7 @@ static inline void revertNullMove(Board *board, Undo *undo) {
 }
 
 static inline void revert(Thread *thread, Board *board, uint16_t move) {
+    ASSERT_PRINT_INT(thread->height > 0, thread->height);
     if (move == NULL_MOVE)
         revertNullMove(board, &thread->undoStack[--thread->height]);
     else

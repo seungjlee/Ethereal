@@ -59,7 +59,9 @@ static inline double elapsed_time(const TimeManager *tm) {
 }
 
 void tm_init(const Limits *limits, TimeManager *tm);
+#ifdef ENABLE_MULTITHREAD
 bool tm_stop_early(const Thread *thread);
+#endif
 
 #ifdef LIMITED_BY_SELF
 void tm_update(const Thread *thread, const Limits *limits, TimeManager *tm);

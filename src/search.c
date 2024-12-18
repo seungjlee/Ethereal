@@ -66,6 +66,7 @@ static void select_from_threads(Thread *threads, uint16_t *best, uint16_t *ponde
 
     Thread *best_thread = &threads[0];
 
+#ifdef ENABLE_MULTITHREAD
     for (int i = 1; i < threads->nthreads; i++) {
 
         const int best_depth = best_thread->completed;
@@ -82,8 +83,10 @@ static void select_from_threads(Thread *threads, uint16_t *best, uint16_t *ponde
             && (this_score > best_score || best_score < MATE_IN_MAX))
             best_thread = &threads[i];
     }
+#endif
 
     // Best and Ponder moves are simply the PV moves
+    ASSERT_PRINT_INT(best_thread->completed < MAX_PLY, best_thread->completed);
     *best   = best_thread->pvs[best_thread->completed].line[0];
     *ponder = best_thread->pvs[best_thread->completed].line[1];
     *score  = best_thread->pvs[best_thread->completed].score;
@@ -92,12 +95,14 @@ static void select_from_threads(Thread *threads, uint16_t *best, uint16_t *ponde
     if (best_thread->pvs[best_thread->completed].length < 2)
         *ponder = NONE_MOVE;
 
+#ifdef ENABLE_MULTITHREAD
     // Report via UCI when our best thread is not the main thread
     if (best_thread != &threads[0]) {
         const int best_depth = best_thread->completed;
         best_thread->multiPV = 0;
         uciReport(best_thread, &best_thread->pvs[best_depth], -MATE, MATE);
     }
+#endif
 }
 
 static void update_best_line(Thread *thread, PVariation *pv) {
@@ -105,13 +110,16 @@ static void update_best_line(Thread *thread, PVariation *pv) {
     /// this Thread's line of best play for the newly completed depth.
     /// We store seperately the lines that we explore in multipv searches
 
+    ASSERT_PRINT_INT(thread->completed < MAX_PLY, thread->completed);
     if (  !thread->multiPV
         || pv->score > thread->pvs[thread->completed].score) {
 
         thread->completed = thread->depth;
+        ASSERT_PRINT_INT(thread->depth < MAX_PLY, thread->depth);
         memcpy(&thread->pvs[thread->depth], pv, sizeof(PVariation));
     }
 
+    ASSERT_PRINT_INT(thread->multiPV < MAX_MOVES, thread->multiPV);
     memcpy(&thread->mpvs[thread->multiPV], pv, sizeof(PVariation));
 }
 
@@ -325,6 +333,8 @@ static int qsearch(Thread *thread, PVariation *pv, int alpha, int beta) {
 
 static int singularity(Thread *thread, uint16_t ttMove, int ttValue, int depth, int PvNode, int alpha, int beta, bool cutnode);
 static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth, bool cutnode) {
+    ASSERT_PRINT_INT(thread->height >= 0, thread->height);
+    ASSERT_PRINT_INT(thread->height < STACK_SIZE, thread->height);
 
     TimeManager *const tm = thread->tm;
     Limits *const limits  = thread->limits;
@@ -475,6 +485,7 @@ static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth
     improving = !inCheck && eval > (ns-2)->eval;
 
     // Reset Killer moves for our children
+    ASSERT_PRINT_INT(thread->height < MAX_PLY, thread->height);
     thread->killers[thread->height+1][0] = NONE_MOVE;
     thread->killers[thread->height+1][1] = NONE_MOVE;
 
@@ -676,11 +687,11 @@ static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth
 
         played += 1;
         if (isQuiet) {
-            assert((size_t)quietsPlayed + 1 < sizeof(quietsTried)/sizeof(quietsTried[0]));
+            assert((size_t)quietsPlayed < sizeof(quietsTried)/sizeof(quietsTried[0]));
             quietsTried[quietsPlayed++] = move;
         }
         else {
-            assert((size_t)capturesPlayed + 1 < sizeof(capturesTried)/sizeof(capturesTried[0]));
+            assert((size_t)capturesPlayed < sizeof(capturesTried)/sizeof(capturesTried[0]));
             capturesTried[capturesPlayed++] = move;
         }
 
@@ -889,6 +900,7 @@ static void aspirationWindow(Thread *thread) {
 
     // After a few depths use a previous result to form the window
     if (thread->depth >= WindowDepth) {
+        ASSERT_PRINT_INT((size_t)thread->completed < sizeof(thread->pvs)/sizeof(thread->pvs[0]), thread->completed);
         alpha = MAX(-MATE, thread->pvs[thread->completed].score - delta);
         beta  = MIN( MATE, thread->pvs[thread->completed].score + delta);
     }
@@ -905,6 +917,7 @@ static void aspirationWindow(Thread *thread) {
 
         // Search returned a result within our window
         if (pv.score > alpha && pv.score < beta) {
+            ASSERT_PRINT_INT((size_t)thread->multiPV < sizeof(thread->bestMoves)/sizeof(thread->bestMoves[0]), thread->multiPV);
             thread->bestMoves[thread->multiPV] = pv.line[0];
             update_best_line(thread, &pv);
             return;
@@ -1151,6 +1164,7 @@ int staticExchangeEvaluation(Thread *thread, uint16_t move, int threshold) {
 
 static int singularity(Thread *thread, uint16_t ttMove, int ttValue, int depth, int PvNode, int alpha, int beta, bool cutnode) {
     ASSERT_PRINT_INT(thread->height > 0, thread->height);
+    ASSERT_PRINT_INT(thread->height < STACK_SIZE + 1, thread->height);
 
     Board *const board  = &thread->board;
     NodeState *const ns = &thread->states[thread->height-1];

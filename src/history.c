@@ -67,6 +67,8 @@ static int16_t* underlying_capture_history(Thread *thread, uint16_t move) {
 static void underlying_quiet_history(Thread *thread, uint16_t move, int16_t *histories[3]) {
     static const int16_t NULL_HISTORY = 0; // Always zero to handle missing CM/FM history
 
+    ASSERT_PRINT_INT(thread->height >= 0, thread->height);
+    ASSERT_PRINT_INT(thread->height < STACK_SIZE, thread->height);
     NodeState *const ns    = &thread->states[thread->height];
     const uint64_t threats = thread->board.threats;
 
@@ -132,12 +134,14 @@ void get_refutation_moves(Thread *thread, uint16_t *killer1, uint16_t *killer2, 
         *counter = NONE_MOVE;
     }
     else  {
+        ASSERT_PRINT_INT(thread->height < STACK_SIZE + 1, thread->height);
         NodeState *const prev = &thread->states[thread->height-1];
 
         *counter = (prev->move == NONE_MOVE || prev->move == NULL_MOVE) ? NONE_MOVE
                 :  thread->cmtable[!thread->board.turn][prev->movedPiece][MoveTo(prev->move)];
     }
 
+    ASSERT_PRINT_INT(thread->height >=0, thread->height);
     *killer1 = thread->killers[thread->height][0];
     *killer2 = thread->killers[thread->height][1];
 }
@@ -193,7 +197,9 @@ void get_quiet_histories(Thread *thread, uint16_t *moves, int *scores, int start
 }
 
 void update_quiet_histories(Thread *thread, uint16_t *moves, int length, int depth) {
-
+    ASSERT_PRINT_INT(thread->height >=0, thread->height);
+    ASSERT_PRINT_INT(thread->height < STACK_SIZE, thread->height);
+       
     NodeState *const ns = &thread->states[thread->height];
 
     // We found a low-depth cutoff too easily
