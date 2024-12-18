@@ -29,6 +29,9 @@
 #include "thread.h"
 #include "types.h"
 
+#include <emmintrin.h>
+#include <immintrin.h>
+
 PKNetwork PKNN;
 
 static char *PKWeights[] = {
@@ -62,56 +65,55 @@ void initPKNetwork() {
         strtok(weights, " ");
 
         for (int j = 0; j < PKNETWORK_LAYER1; j++)
-            PKNN.layer1Weights[i][j] = atof(strtok(NULL, " "));
+            PKNN.layer1Weights[j][i] = atof(strtok(NULL, " "));
         PKNN.layer1Biases[i] = atof(strtok(NULL, " "));
     }
 }
 
 int computePKNetwork(Board *board) {
-
     uint64_t pawns = board->pieces[PAWN];
     uint64_t kings = board->pieces[KING];
     uint64_t black = board->colours[BLACK];
 
-    float layer1Neurons[PKNETWORK_LAYER1];
-    float outputNeurons[PKNETWORK_OUTPUTS];
+    const int avx_step = sizeof(__m256) / sizeof(float);
+    __m256 layer1_256[PKNETWORK_LAYER1 / avx_step];
+    float* layer1Neurons = (float*)layer1_256;
 
-    // Layer 1: Compute the values in the hidden Neurons of Layer 1
-    // by looping over the Kings and Pawns bitboards, and applying
-    // the weight which corresponds to each piece. We break the Kings
-    // into two nearly duplicate steps, in order to more efficiently
-    // set and update the Layer 1 Neurons initially
-
-    { // Do one King first so we can set the Neurons
-        int sq = poplsb(&kings);
-        int idx = computePKNetworkIndex(testBit(black, sq), KING, sq);
-        for (int i = 0; i < PKNETWORK_LAYER1; i++)
-            layer1Neurons[i] = PKNN.inputBiases[i] + PKNN.inputWeights[idx][i];
-    }
-
-    { // Do the remaining King as we would do normally
-        int sq = poplsb(&kings);
-        int idx = computePKNetworkIndex(testBit(black, sq), KING, sq);
-        for (int i = 0; i < PKNETWORK_LAYER1; i++)
-            layer1Neurons[i] += PKNN.inputWeights[idx][i];
-    }
-
+    const int MAX_PAWNS = 16;
+    int pawnIndices[MAX_PAWNS];
+    int pawnCount = 0;
     while (pawns) {
         int sq = poplsb(&pawns);
-        int idx = computePKNetworkIndex(testBit(black, sq), PAWN, sq);
-        for (int i = 0; i < PKNETWORK_LAYER1; i++)
-            layer1Neurons[i] += PKNN.inputWeights[idx][i];
+        pawnIndices[pawnCount++] = computePKNetworkIndex(testBit(black, sq), PAWN, sq);
+    }
+    assert(pawnCount <= MAX_PAWNS);
+
+    int sq1 = poplsb(&kings);
+    int sq2 = poplsb(&kings);
+    int idx1 = computePKNetworkIndex(testBit(black, sq1), KING, sq1);
+    int idx2 = computePKNetworkIndex(testBit(black, sq2), KING, sq2);
+
+    for (int i = 0; i < PKNETWORK_LAYER1 / avx_step; i++) {
+        layer1_256[i] = _mm256_add_ps(
+            _mm256_add_ps(_mm256_load_ps(&PKNN.inputBiases[i*avx_step]),
+                          _mm256_load_ps(&PKNN.inputWeights[idx1][i*avx_step])),
+            _mm256_load_ps(&PKNN.inputWeights[idx2][i*avx_step])
+        );
+        for (int pawnIndex = 0; pawnIndex < pawnCount; pawnIndex++)
+            layer1_256[i] = _mm256_add_ps(layer1_256[i], 
+                                          _mm256_load_ps(&PKNN.inputWeights[pawnIndices[pawnIndex]][i*avx_step]));
     }
 
-    // Layer 2: Trivially compute the Output layer. Apply a ReLU here.
-    // We do not apply a ReLU in Layer 1, since we already know that all
-    // of the Inputs in Layer 1 are going to be zeros or ones
-
-    for (int i = 0; i < PKNETWORK_OUTPUTS; i++) {
-        outputNeurons[i] = PKNN.layer1Biases[i];
-        for (int j = 0; j < PKNETWORK_LAYER1; j++)
-            if (layer1Neurons[j] >= 0.0)
-                outputNeurons[i] += layer1Neurons[j] * PKNN.layer1Weights[i][j];
+    __m128 output128;
+    float* outputNeurons = (float*)&output128;
+    const __m128 zeros128 = _mm_setzero_ps();
+    outputNeurons[0] = PKNN.layer1Biases[0];
+    outputNeurons[1] = PKNN.layer1Biases[1];
+    for (int j = 0; j < PKNETWORK_LAYER1; j++) {
+        __m128 layer1_128 = _mm_set1_ps(layer1Neurons[j]);
+        layer1_128 = _mm_max_ps(layer1_128, zeros128);
+        __m128d weights128 = _mm_load_sd((double*)&PKNN.layer1Weights[j][0]);
+        output128 = _mm_add_ps(output128, _mm_mul_ps(layer1_128, *((__m128*)&weights128)));
     }
 
     assert(PKNETWORK_OUTPUTS == PHASE_NB);

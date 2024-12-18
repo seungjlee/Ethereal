@@ -37,11 +37,11 @@ typedef struct PKNetwork {
     // caching and memory lookups, since when computing we iterate
     // over only the ~20 Inputs set out of the 224 possible Inputs
 
-    ALIGN64 float inputWeights[PKNETWORK_INPUTS][PKNETWORK_LAYER1];
-    ALIGN64 float inputBiases[PKNETWORK_LAYER1];
+    alignas(256) float inputWeights[PKNETWORK_INPUTS][PKNETWORK_LAYER1];
+    alignas(256) float inputBiases[PKNETWORK_LAYER1];
 
-    ALIGN64 float layer1Weights[PKNETWORK_OUTPUTS][PKNETWORK_LAYER1];
-    ALIGN64 float layer1Biases[PKNETWORK_OUTPUTS];
+    alignas(256) float layer1Weights[PKNETWORK_LAYER1][PKNETWORK_OUTPUTS];
+    alignas(256) float layer1Biases[PKNETWORK_OUTPUTS];
 
 } PKNetwork;
 
