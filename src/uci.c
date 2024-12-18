@@ -167,7 +167,7 @@ int main(int argc, char **argv) {
     Thread *threads;
 #ifdef ENABLE_MULTITHREAD
     pthread_t pthreadsgo;
-    const int nthreads = 1;
+    const int nthreads = 2;
 #else
     const int nthreads = 1;
 #endif
