@@ -907,12 +907,10 @@ static void aspirationWindow(Thread *thread) {
         beta  = MIN( MATE, thread->pvs[thread->completed].score + delta);
     }
 
-    bool bestUpdated = false;
+    pv.score = search(thread, &pv, alpha, beta, MAX(1, depth), FALSE);
+    update_best_line(thread, &pv);
 
     while (1) {
-
-        // Perform a search and consider reporting results
-        pv.score = search(thread, &pv, alpha, beta, MAX(1, depth), FALSE);
 #ifdef REPORT_DIAGNOSTICS
         if (   (report && pv.score > alpha && pv.score < beta)
             || (report && elapsed_time(thread->tm) >= WindowTimerMS))
@@ -940,7 +938,6 @@ static void aspirationWindow(Thread *thread) {
             beta = MIN(MATE, beta + delta);
             depth = depth - (abs(pv.score) <= MATE / 2);
             update_best_line(thread, &pv);
-            bestUpdated = true;
         }
 
 #ifdef LIMITED_BY_SELF
@@ -950,14 +947,13 @@ static void aspirationWindow(Thread *thread) {
 #endif
             (limits->limitedByDepth && thread->depth >= limits->depthLimit) ||
             (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit)) {
-            if (!bestUpdated)
-                // Just use update it with something.
-                update_best_line(thread, &pv);
             break;
         }
 
         // Expand the search window
         delta = delta + delta / 2;
+
+        pv.score = search(thread, &pv, alpha, beta, MAX(1, depth), FALSE);
     }
 }
 
