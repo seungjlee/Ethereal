@@ -56,10 +56,13 @@ struct Thread {
     Limits *limits;
     TimeManager *tm;
     PVariation pvs[MAX_PLY];
+
+#ifdef ENABLE_MULTI_PV
     PVariation mpvs[MAX_MOVES];
 
     int multiPV;
     uint16_t bestMoves[MAX_MOVES];
+#endif
 
     uint64_t nodes, tbhits;
     int depth, seldepth, height, completed;

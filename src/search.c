@@ -101,7 +101,9 @@ static void select_from_threads(Thread *threads, uint16_t *best, uint16_t *ponde
     // Report via UCI when our best thread is not the main thread
     if (best_thread != &threads[0]) {
         const int best_depth = best_thread->completed;
+#ifdef ENABLE_MULTI_PV
         best_thread->multiPV = 0;
+#endif
         uciReport(best_thread, &best_thread->pvs[best_depth], -MATE, MATE);
     }
 #endif
@@ -113,16 +115,21 @@ static void update_best_line(Thread *thread, PVariation *pv) {
     /// We store seperately the lines that we explore in multipv searches
 
     ASSERT_PRINT_INT(thread->completed < MAX_PLY, thread->completed);
+#ifdef ENABLE_MULTI_PV
     if (  !thread->multiPV
         || pv->score > thread->pvs[thread->completed].score) {
-
+#else
+    {
+#endif
         thread->completed = thread->depth;
         ASSERT_PRINT_INT(thread->depth < MAX_PLY, thread->depth);
         memcpy(&thread->pvs[thread->depth], pv, sizeof(PVariation));
     }
 
+#ifdef ENABLE_MULTI_PV
     ASSERT_PRINT_INT(thread->multiPV < MAX_MOVES, thread->multiPV);
     memcpy(&thread->mpvs[thread->multiPV], pv, sizeof(PVariation));
+#endif
 }
 
 static void revert_best_line(Thread *thread) {
@@ -130,7 +137,9 @@ static void revert_best_line(Thread *thread) {
     /// to remove any fail-highs that we may have originally marked as best
     /// lines, since we now believe the line to much worse than before
 
+#ifdef ENABLE_MULTI_PV
     if (!thread->multiPV)
+#endif
         thread->completed = thread->depth - 1;
 }
 
@@ -623,7 +632,9 @@ static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth
 #endif
 
         // MultiPV and UCI searchmoves may limit our search options
+#ifdef ENABLE_MULTI_PV
         if (RootNode && moveExaminedByMultiPV(thread, move)) continue;
+#endif
         if (RootNode &&    !moveIsInRootMoves(thread, move)) continue;
 
         // Track Moves Seen for Late Move Pruning
@@ -875,7 +886,11 @@ static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth
     // Step 23. Store results of search into the Transposition Table. We do not overwrite
     // the Root entry from the first line of play we examined. We also don't store into the
     // Transposition Table while attempting to veryify singularities
+#ifdef ENABLE_MULTI_PV
     if (!ns->excluded && (!RootNode || !thread->multiPV)) {
+#else
+    if (!ns->excluded) {
+#endif
         ttBound  = best >= beta    ? BOUND_LOWER
                  : best > oldAlpha ? BOUND_EXACT : BOUND_UPPER;
         bestMove = ttBound == BOUND_UPPER ? NONE_MOVE : bestMove;
@@ -919,8 +934,11 @@ static void aspirationWindow(Thread *thread) {
 
         // Search returned a result within our window
         if (pv.score > alpha && pv.score < beta) {
+#ifdef ENABLE_MULTI_PV
+            //ASSERT_PRINT_INT(thread->multiPV == 0, thread->multiPV);
             ASSERT_PRINT_INT((size_t)thread->multiPV < sizeof(thread->bestMoves)/sizeof(thread->bestMoves[0]), thread->multiPV);
             thread->bestMoves[thread->multiPV] = pv.line[0];
+#endif
             update_best_line(thread, &pv);
             return;
         }
@@ -986,9 +1004,7 @@ static void* iterativeDeepening(void *vthread) {
         for (thread->multiPV = 0; thread->multiPV < limits->multiPV; thread->multiPV++)
             aspirationWindow(thread);
 #else
-        thread->multiPV = 0;
         aspirationWindow(thread);
-        thread->multiPV = 1;
 #endif
 
 #ifdef ENABLE_MULTITHREAD
