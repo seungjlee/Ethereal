@@ -371,14 +371,10 @@ static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth
 
     // Step 1. Quiescence Search. Perform a search using mostly tactical
     // moves to reach a more stable position for use as a static evaluation
-    if (depth <= 0 && !board->kingAttackers)
-        return qsearch(thread, pv, alpha, beta);
+    ASSERT_PRINT_INT(thread->depth > 0, thread->depth);
 
     // Ensure a fresh PV
     pv->length = 0;
-
-    // Ensure positive depth
-    depth = MAX(0, depth);
 
     // Updates for UCI reporting
     thread->seldepth = RootNode ? 0 : MAX(thread->seldepth, thread->height);
@@ -409,80 +405,78 @@ static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth
         // the next one, would still not create a more extreme line
         rAlpha = MAX(alpha, -MATE + thread->height);
         rBeta  = MIN(beta ,  MATE - thread->height - 1);
-        if (rAlpha >= rBeta) return rAlpha;
+        if (rAlpha >= rBeta)
+            return rAlpha;
     }
 
     // Don't probe the TT or TB during singluar searches
-    if (ns->excluded != NONE_MOVE)
-        goto search_init_goto;
+    if (ns->excluded == NONE_MOVE) {
+        // Step 4. Probe the Transposition Table, adjust the value, and consider cutoffs
+        if ((ttHit = tt_probe(board->hash, thread->height, &ttMove, &ttValue, &ttEval, &ttDepth, &ttBound))) {
 
-    // Step 4. Probe the Transposition Table, adjust the value, and consider cutoffs
-    if ((ttHit = tt_probe(board->hash, thread->height, &ttMove, &ttValue, &ttEval, &ttDepth, &ttBound))) {
+            // Only cut with a greater depth search, and do not return
+            // when in a PvNode, unless we would otherwise hit a qsearch
+            if (    ttDepth >= depth
+                && (depth == 0 || !PvNode)
+                && (cutnode || ttValue <= alpha)) {
 
-        // Only cut with a greater depth search, and do not return
-        // when in a PvNode, unless we would otherwise hit a qsearch
-        if (    ttDepth >= depth
-            && (depth == 0 || !PvNode)
-            && (cutnode || ttValue <= alpha)) {
+                // Table is exact or produces a cutoff
+                if (    ttBound == BOUND_EXACT
+                    || (ttBound == BOUND_LOWER && ttValue >= beta)
+                    || (ttBound == BOUND_UPPER && ttValue <= alpha))
+                    return ttValue;
+            }
 
-            // Table is exact or produces a cutoff
-            if (    ttBound == BOUND_EXACT
-                || (ttBound == BOUND_LOWER && ttValue >= beta)
-                || (ttBound == BOUND_UPPER && ttValue <= alpha))
-                return ttValue;
+            // An entry coming from one depth lower than we would accept for a cutoff will
+            // still be accepted if it appears that failing low will trigger a research.
+            if (   !PvNode
+                &&  ttDepth >= depth - 1
+                && (ttBound & BOUND_UPPER)
+                && (cutnode || ttValue <= alpha)
+                &&  ttValue + TTResearchMargin <= alpha)
+                return alpha;
         }
 
-        // An entry coming from one depth lower than we would accept for a cutoff will
-        // still be accepted if it appears that failing low will trigger a research.
-        if (   !PvNode
-            &&  ttDepth >= depth - 1
-            && (ttBound & BOUND_UPPER)
-            && (cutnode || ttValue <= alpha)
-            &&  ttValue + TTResearchMargin <= alpha)
-            return alpha;
-    }
+        // Step 5. Probe the Syzygy Tablebases. tablebasesProbeWDL() handles all of
+        // the conditions about the board, the existance of tables, the probe depth,
+        // as well as to not probe at the Root. The return is defined by the Pyrrhic API
+        if ((tbresult = tablebasesProbeWDL(board, depth, thread->height)) != TB_RESULT_FAILED) {
 
-    // Step 5. Probe the Syzygy Tablebases. tablebasesProbeWDL() handles all of
-    // the conditions about the board, the existance of tables, the probe depth,
-    // as well as to not probe at the Root. The return is defined by the Pyrrhic API
-    if ((tbresult = tablebasesProbeWDL(board, depth, thread->height)) != TB_RESULT_FAILED) {
+            thread->tbhits++; // Increment tbhits counter for this thread
 
-        thread->tbhits++; // Increment tbhits counter for this thread
+            // Convert the WDL value to a score. We consider blessed losses
+            // and cursed wins to be a draw, and thus set value to zero.
+            value = tbresult == TB_LOSS ? -TBWIN + thread->height
+                : tbresult == TB_WIN  ?  TBWIN - thread->height : 0;
 
-        // Convert the WDL value to a score. We consider blessed losses
-        // and cursed wins to be a draw, and thus set value to zero.
-        value = tbresult == TB_LOSS ? -TBWIN + thread->height
-              : tbresult == TB_WIN  ?  TBWIN - thread->height : 0;
+            // Identify the bound based on WDL scores. For wins and losses the
+            // bound is not exact because we are dependent on the height, but
+            // for draws (and blessed / cursed) we know the tbresult to be exact
+            tbBound = tbresult == TB_LOSS ? BOUND_UPPER
+                    : tbresult == TB_WIN  ? BOUND_LOWER : BOUND_EXACT;
 
-        // Identify the bound based on WDL scores. For wins and losses the
-        // bound is not exact because we are dependent on the height, but
-        // for draws (and blessed / cursed) we know the tbresult to be exact
-        tbBound = tbresult == TB_LOSS ? BOUND_UPPER
-                : tbresult == TB_WIN  ? BOUND_LOWER : BOUND_EXACT;
+            // Check to see if the WDL value would cause a cutoff
+            if (    tbBound == BOUND_EXACT
+                || (tbBound == BOUND_LOWER && value >= beta)
+                || (tbBound == BOUND_UPPER && value <= alpha)) {
 
-        // Check to see if the WDL value would cause a cutoff
-        if (    tbBound == BOUND_EXACT
-            || (tbBound == BOUND_LOWER && value >= beta)
-            || (tbBound == BOUND_UPPER && value <= alpha)) {
+                tt_store(board->hash, thread->height, NONE_MOVE, value, VALUE_NONE, depth, tbBound);
+                return value;
+            }
 
-            tt_store(board->hash, thread->height, NONE_MOVE, value, VALUE_NONE, depth, tbBound);
-            return value;
+            // Never score something worse than the known Syzygy value
+            if (PvNode && tbBound == BOUND_LOWER)
+                syzygyMin = value, alpha = MAX(alpha, value);
+
+            // Never score something better than the known Syzygy value
+            if (PvNode && tbBound == BOUND_UPPER)
+                syzygyMax = value;
         }
-
-        // Never score something worse than the known Syzygy value
-        if (PvNode && tbBound == BOUND_LOWER)
-            syzygyMin = value, alpha = MAX(alpha, value);
-
-        // Never score something better than the known Syzygy value
-        if (PvNode && tbBound == BOUND_UPPER)
-            syzygyMax = value;
     }
-
     // Step 6. Initialize flags and values used by pruning and search methods
-    search_init_goto:
 
     // We can grab in check based on the already computed king attackers bitboard
-    inCheck = !!board->kingAttackers;
+    inCheck = board->kingAttackers != 0;
 
     // Save a history of the static evaluations when not checked
     eval = ns->eval = inCheck ? VALUE_NONE
