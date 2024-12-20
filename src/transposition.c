@@ -92,7 +92,7 @@ int tt_init(int nthreads, int megabytes) {
 #else
     (void)(nthreads), (void)(megabytes);
 
-    uint64_t size = 512;
+    uint64_t size = 1 << 14;
     int bytes = (int)(size * sizeof(TTBucket));
 
     Table.hashMask = size - 1;
