@@ -323,7 +323,7 @@ static int qsearch(Thread *thread, PVariation *pv, int alpha, int beta) {
 
                 // Update the Principle Variation
                 pv->length = 1 + lpv.length;
-                pv->line[0] = move;
+                pv->line[0] = bestMove;
                 assert(pv->length < MAX_PLY);
                 memcpy(pv->line + 1, lpv.line, sizeof(uint16_t) * lpv.length);
             }
@@ -333,10 +333,15 @@ static int qsearch(Thread *thread, PVariation *pv, int alpha, int beta) {
                 break;
         }
     }
+    if (pv->length == 0) {
+        pv->length = 1;
+        pv->line[0] = bestMove == NONE_MOVE ? move : bestMove;
+    }
 
     // Step 8. Store results of search into the Transposition Table.
     ttBound = best >= beta    ? BOUND_LOWER
             : best > oldAlpha ? BOUND_EXACT : BOUND_UPPER;
+
     tt_store(board->hash, thread->height, bestMove, best, eval, 0, ttBound);
 
     return best;
