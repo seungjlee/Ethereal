@@ -366,7 +366,6 @@ static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth
     uint16_t move, ttMove = NONE_MOVE, bestMove = NONE_MOVE;
     uint16_t quietsTried[MAX_MOVES], capturesTried[MAX_MOVES];
     bool doFullSearch;
-    PVariation lpv;
     int value = 0;
 
     // Step 1. Quiescence Search. Perform a search using mostly tactical
@@ -546,9 +545,9 @@ static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth
 
         apply(thread, board, NULL_MOVE);
         if (depth-R <= 0 && !board->kingAttackers)
-            value = -qsearch(thread, &lpv, -beta, -beta+1);
+            value = -qsearch(thread, pv, -beta, -beta+1);
         else
-            value = -search(thread, &lpv, -beta, -beta+1, depth-R, !cutnode);
+            value = -search(thread, pv, -beta, -beta+1, depth-R, !cutnode);
         revert(thread, board, NULL_MOVE);
 
         // Don't return unproven TB-Wins or Mates
@@ -575,14 +574,14 @@ static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth
 
                 // For high depths, verify the move first with a qsearch
                 if (depth >= 2 * ProbCutDepth)
-                    value = -qsearch(thread, &lpv, -rBeta, -rBeta+1);
+                    value = -qsearch(thread, pv, -rBeta, -rBeta+1);
 
                 // For low depths, or after the above, verify with a reduced search
                 if (depth < 2 * ProbCutDepth || value >= rBeta) {
                     if (depth-4 <= 0 && !board->kingAttackers)
-                        value = -qsearch(thread, &lpv, -rBeta, -rBeta+1);
+                        value = -qsearch(thread, pv, -rBeta, -rBeta+1);
                     else
-                        value = -search(thread, &lpv, -rBeta, -rBeta+1, depth-4, !cutnode);
+                        value = -search(thread, pv, -rBeta, -rBeta+1, depth-4, !cutnode);
                 }
 
                 // Revert the board state
@@ -618,7 +617,10 @@ static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth
     // Step 12. Initialize the Move Picker and being searching through each
     // move one at a time, until we run out or a move generates a cutoff. We
     // reuse an already initialized MovePicker to verify Singular Extension
-    if (!ns->excluded) init_picker(&ns->mp, thread, ttMove);
+    if (!ns->excluded)
+        init_picker(&ns->mp, thread, ttMove);
+
+    PVariation lpv;
     while ((move = select_next(&ns->mp, thread, skipQuiets)) != NONE_MOVE) {
 
 #ifdef LIMITED_BY_SELF
