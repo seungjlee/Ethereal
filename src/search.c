@@ -323,7 +323,7 @@ static int qsearch(Thread *thread, PVariation *pv, int alpha, int beta) {
 
                 // Update the Principle Variation
                 pv->length = 1 + lpv.length;
-                pv->line[0] = bestMove;
+                pv->line[0] = move;
                 assert(pv->length < MAX_PLY);
                 memcpy(pv->line + 1, lpv.line, sizeof(uint16_t) * lpv.length);
             }
@@ -333,15 +333,10 @@ static int qsearch(Thread *thread, PVariation *pv, int alpha, int beta) {
                 break;
         }
     }
-    if (pv->length == 0) {
-        pv->length = 1;
-        pv->line[0] = bestMove == NONE_MOVE ? move : bestMove;
-    }
 
     // Step 8. Store results of search into the Transposition Table.
     ttBound = best >= beta    ? BOUND_LOWER
             : best > oldAlpha ? BOUND_EXACT : BOUND_UPPER;
-
     tt_store(board->hash, thread->height, bestMove, best, eval, 0, ttBound);
 
     return best;
@@ -371,6 +366,7 @@ static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth
     uint16_t move, ttMove = NONE_MOVE, bestMove = NONE_MOVE;
     uint16_t quietsTried[MAX_MOVES], capturesTried[MAX_MOVES];
     bool doFullSearch;
+    PVariation lpv;
     int value = 0;
 
     // Step 1. Quiescence Search. Perform a search using mostly tactical
@@ -550,9 +546,9 @@ static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth
 
         apply(thread, board, NULL_MOVE);
         if (depth-R <= 0 && !board->kingAttackers)
-            value = -qsearch(thread, pv, -beta, -beta+1);
+            value = -qsearch(thread, &lpv, -beta, -beta+1);
         else
-            value = -search(thread, pv, -beta, -beta+1, depth-R, !cutnode);
+            value = -search(thread, &lpv, -beta, -beta+1, depth-R, !cutnode);
         revert(thread, board, NULL_MOVE);
 
         // Don't return unproven TB-Wins or Mates
@@ -579,14 +575,14 @@ static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth
 
                 // For high depths, verify the move first with a qsearch
                 if (depth >= 2 * ProbCutDepth)
-                    value = -qsearch(thread, pv, -rBeta, -rBeta+1);
+                    value = -qsearch(thread, &lpv, -rBeta, -rBeta+1);
 
                 // For low depths, or after the above, verify with a reduced search
                 if (depth < 2 * ProbCutDepth || value >= rBeta) {
                     if (depth-4 <= 0 && !board->kingAttackers)
-                        value = -qsearch(thread, pv, -rBeta, -rBeta+1);
+                        value = -qsearch(thread, &lpv, -rBeta, -rBeta+1);
                     else
-                        value = -search(thread, pv, -rBeta, -rBeta+1, depth-4, !cutnode);
+                        value = -search(thread, &lpv, -rBeta, -rBeta+1, depth-4, !cutnode);
                 }
 
                 // Revert the board state
@@ -600,6 +596,7 @@ static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth
                 if (value >= rBeta) return value;
             }
 
+#if 0
 #ifdef LIMITED_BY_SELF
             if (   (limits->limitedBySelf  && tm_finished(thread, tm)) ||
 #else
@@ -608,6 +605,7 @@ static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth
                 (limits->limitedByDepth && thread->depth >= limits->depthLimit) ||
                 (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
                 break;
+#endif
         }
     }
 
@@ -622,10 +620,7 @@ static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth
     // Step 12. Initialize the Move Picker and being searching through each
     // move one at a time, until we run out or a move generates a cutoff. We
     // reuse an already initialized MovePicker to verify Singular Extension
-    if (!ns->excluded)
-        init_picker(&ns->mp, thread, ttMove);
-
-    PVariation lpv;
+    if (!ns->excluded) init_picker(&ns->mp, thread, ttMove);
     while ((move = select_next(&ns->mp, thread, skipQuiets)) != NONE_MOVE) {
 
 #ifdef LIMITED_BY_SELF
@@ -852,17 +847,19 @@ static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth
                 memcpy(pv->line + 1, lpv.line, sizeof(uint16_t) * lpv.length);
 
                 // Search failed high
-                if (alpha >= beta) break;
-            }
-        }
+                if (alpha >= beta)
+                    break;
+
 #ifdef LIMITED_BY_SELF
-        if (   (limits->limitedBySelf  && tm_finished(thread, tm)) ||
+                if (   (limits->limitedBySelf  && tm_finished(thread, tm)) ||
 #else
-        if (
+                if (
 #endif
-            (limits->limitedByDepth && thread->depth >= limits->depthLimit) ||
-            (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
-            break;
+                    (limits->limitedByDepth && thread->depth >= limits->depthLimit) ||
+                    (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
+                    break;
+                    }
+        }
     }
 
     // Step 20 (~760 elo). Update History counters on a fail high for a quiet move.
@@ -923,10 +920,8 @@ static void aspirationWindow(Thread *thread) {
         beta  = MIN( MATE, thread->pvs[thread->completed].score + delta);
     }
 
-    pv.score = search(thread, &pv, alpha, beta, MAX(1, depth), FALSE);
-    update_best_line(thread, &pv);
-
     while (1) {
+        pv.score = search(thread, &pv, alpha, beta, MAX(1, depth), FALSE);
 #ifdef REPORT_DIAGNOSTICS
         if (   (report && pv.score > alpha && pv.score < beta)
             || (report && elapsed_time(thread->tm) >= WindowTimerMS))
@@ -971,8 +966,6 @@ static void aspirationWindow(Thread *thread) {
 
         // Expand the search window
         delta = delta + delta / 2;
-
-        pv.score = search(thread, &pv, alpha, beta, MAX(1, depth), FALSE);
     }
 }
 
