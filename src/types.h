@@ -33,7 +33,7 @@ enum { WHITE, BLACK };
 enum { PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING };
 
 enum {
-    MAX_PLY = 64,
+    MAX_PLY = 128,
     MAX_MOVES = TB_MAX_MOVES
 };
 
@@ -106,11 +106,13 @@ struct Limits {
 #ifdef LIMITED_BY_SELF
     int limitedBySelf;
 #endif
-    int limitedByDepth, limitedByMoves, limitedByNodes;
+    int limitedByMoves, limitedByNodes;
 #ifdef ENABLE_MULTI_PV
     int multiPV;
 #endif
-    int depthLimit;
+#ifdef ENABLE_DEPTH_LIMIT
+    int limitedByDepth, depthLimit;
+#endif
     uint64_t nodeLimit;
     uint16_t searchMoves[MAX_MOVES], excludedMoves[MAX_MOVES];
 };

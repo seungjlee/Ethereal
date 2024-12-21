@@ -598,17 +598,6 @@ static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth
                 // Probcut failed high verifying the cutoff
                 if (value >= rBeta) return value;
             }
-
-#if 0
-#ifdef LIMITED_BY_SELF
-            if (   (limits->limitedBySelf  && tm_finished(thread, tm)) ||
-#else
-            if (
-#endif
-                (limits->limitedByDepth && thread->depth >= limits->depthLimit) ||
-                (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
-                break;
-#endif
         }
     }
 
@@ -860,10 +849,13 @@ static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth
 #else
         if (
 #endif
+#ifdef ENABLE_DEPTH_LIMIT
             (limits->limitedByDepth && thread->depth >= limits->depthLimit) ||
-            (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
+#endif
+            (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit)) {
             if (pv->length > 0)
                 break;
+        }
     }
 
     // Step 20 (~760 elo). Update History counters on a fail high for a quiet move.
@@ -963,7 +955,9 @@ static void aspirationWindow(Thread *thread) {
 #else
         if (
 #endif
+#ifdef ENABLE_DEPTH_LIMIT
             (limits->limitedByDepth && thread->depth >= limits->depthLimit) ||
+#endif
             (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit)) {
             if (pv.length > 0)
                 break;
@@ -1034,7 +1028,9 @@ static void* iterativeDeepening(void *vthread) {
 #else
         if (
 #endif
+#ifdef ENABLE_DEPTH_LIMIT
             (limits->limitedByDepth && thread->depth >= limits->depthLimit) ||
+#endif
             (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
             break;
     }

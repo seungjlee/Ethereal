@@ -55,7 +55,9 @@ static void runBenchmark(int argc, char **argv) {
     double time;
     uint64_t totalNodes = 0ull;
 
+#ifdef ENABLE_DEPTH_LIMIT
     int depth     = argc > 2 ? atoi(argv[2]) : 13;
+#endif
     int nthreads  = argc > 3 ? atoi(argv[3]) :  1;
     int megabytes = argc > 4 ? atoi(argv[4]) : 16;
 
@@ -72,8 +74,10 @@ static void runBenchmark(int argc, char **argv) {
 #ifdef ENABLE_MULTI_PV
     limits.multiPV        = 1;
 #endif
+#ifdef ENABLE_DEPTH_LIMIT
     limits.limitedByDepth = 1;
     limits.depthLimit     = depth;
+#endif
 
     for (int i = 0; strcmp(Benchmarks[i], ""); i++) {
 
@@ -123,7 +127,9 @@ static void runEvalBook(int argc, char **argv) {
     double start = get_real_time();
 
     FILE *book    = fopen(argv[2], "r");
+#ifdef ENABLE_DEPTH_LIMIT
     int depth     = argc > 3 ? atoi(argv[3]) : 12;
+#endif
     int nthreads  = argc > 4 ? atoi(argv[4]) :  1;
     int megabytes = argc > 5 ? atoi(argv[5]) :  2;
 
@@ -132,8 +138,10 @@ static void runEvalBook(int argc, char **argv) {
 #ifdef ENABLE_MULTI_PV
     limits.multiPV = 1;
 #endif
+#ifdef ENABLE_DEPTH_LIMIT
     limits.limitedByDepth = 1;
     limits.depthLimit = depth;
+#endif
     tt_init(nthreads, megabytes);
 
     while ((fgets(line, 256, book)) != NULL) {

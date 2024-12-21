@@ -100,7 +100,9 @@ static void uciGo(UCIGoStruct *ucigo, Thread *threads, Board *board, int multiPV
         if (strEquals(ptr, "movestogo"  )) mtg      = atoi(strtok(NULL, " "));
 
         // Parse special search termination conditions
+#ifdef ENABLE_DEPTH_LIMIT
         if (strEquals(ptr, "depth"      )) limits->depthLimit = atoi(strtok(NULL, " "));
+#endif
         if (strEquals(ptr, "nodes"      )) limits->nodeLimit  = atof(strtok(NULL, " "));
         if (strEquals(ptr, "movetime"   )) {
             limits->timeLimit = atoi(strtok(NULL, " "));
@@ -124,7 +126,9 @@ static void uciGo(UCIGoStruct *ucigo, Thread *threads, Board *board, int multiPV
 
     // Special exit cases: Time, Depth, and Nodes
     limits->limitedByTime  = limits->timeLimit  != 0;
+#ifdef ENABLE_DEPTH_LIMIT
     limits->limitedByDepth = limits->depthLimit != 0;
+#endif
     limits->limitedByNodes = limits->nodeLimit  != 0;
 
 #ifdef LIMITED_BY_SELF
