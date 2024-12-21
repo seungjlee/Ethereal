@@ -70,7 +70,7 @@ struct TTEntry {
 
 struct TTBucket {
     TTEntry slots[TT_BUCKET_NB];
-    uint16_t padding;
+    // uint16_t padding;
 };
 
 struct TTable {
