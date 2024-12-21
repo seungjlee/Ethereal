@@ -850,16 +850,17 @@ static int search(Thread *thread, PVariation *pv, int alpha, int beta, int depth
                 if (alpha >= beta)
                     break;
 
-#ifdef LIMITED_BY_SELF
-                if (   (limits->limitedBySelf  && tm_finished(thread, tm)) ||
-#else
-                if (
-#endif
-                    (limits->limitedByDepth && thread->depth >= limits->depthLimit) ||
-                    (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
-                    break;
-                    }
+            }
         }
+#ifdef LIMITED_BY_SELF
+        if (   (limits->limitedBySelf  && tm_finished(thread, tm)) ||
+#else
+        if (
+#endif
+            (limits->limitedByDepth && thread->depth >= limits->depthLimit) ||
+            (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit))
+            if (pv->length > 0)
+                break;
     }
 
     // Step 20 (~760 elo). Update History counters on a fail high for a quiet move.
@@ -961,7 +962,8 @@ static void aspirationWindow(Thread *thread) {
 #endif
             (limits->limitedByDepth && thread->depth >= limits->depthLimit) ||
             (limits->limitedByTime  && elapsed_time(tm) >= limits->timeLimit)) {
-            break;
+            if (pv.length > 0)
+                break;
         }
 
         // Expand the search window
