@@ -88,6 +88,9 @@ static void select_from_threads(Thread *threads, uint16_t *best, uint16_t *ponde
 #endif
 
     // Best and Ponder moves are simply the PV moves
+#ifdef REPORT_DIAGNOSTICS
+    fprintf(stderr, "best_thread->completed: %d\n", best_thread->completed);
+#endif
     ASSERT_PRINT_INT(best_thread->completed < MAX_PLY, best_thread->completed);
     *best   = best_thread->pvs[best_thread->completed].line[0];
     *ponder = best_thread->pvs[best_thread->completed].line[1];
